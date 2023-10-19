@@ -10,7 +10,7 @@ import imageio
 import cv2
 
 class Microtubules_SR(Dataset):
-    def __init__(self, height, width, resize_flag = 0, scale=2, data_root="/data/home/dz/rDL_SIM/SR/Microtubules_result", mode='train'):
+    def __init__(self, mode, height, width, resize_flag=0, scale=2, data_root="/data/home/dz/rDL_SIM/SR/Microtubules_result"):
         # 根据模式选择数据
         if mode == "train":
             input_path = os.path.join(data_root,'train')
@@ -73,6 +73,6 @@ class Microtubules_SR(Dataset):
     def __len__(self):
         return len(self.imglist_input)
     
-def get_loader(mode, height, width, resize_flag, scale, data_root, batch_size, shuffle=False, num_workers=0):
-    dataset = Microtubules_SR(mode, height, width, resize_flag, scale, data_root, )
+def get_loader(mode, height, width, resize_flag, scale, batch_size, data_root,shuffle=False, num_workers=0):
+    dataset = Microtubules_SR(mode, height, width, resize_flag, scale, data_root)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)
