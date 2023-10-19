@@ -12,10 +12,11 @@ def add_argument_group(name):
     return arg
 
 # Directory
-
 dir_arg = add_argument_group('Directory')
 dir_arg.add_argument('--root_path', type=str, default='/data/home/dz/rDL_SIM/SR/')
 dir_arg.add_argument("--data_folder", type=str, default="Microtubules")
+dir_arg.add_argument("--save_weights_path", type=str, default="../trained_models/SR_Inference_Module/")
+dir_arg.add_argument("--save_weights_suffix", type=str, default="")
 
 # Dataset
 data_arg = add_argument_group('Dataset')
@@ -30,41 +31,34 @@ data_arg.add_argument("--norm_flag", type=int, default=1)
 
 # Model
 model_arg = add_argument_group('Model')
-model_arg.add_argument('--model', type=str, default='CAIN')
-model_arg.add_argument('--depth', type=int, default=3, help='# of pooling')
-model_arg.add_argument('--n_resblocks', type=int, default=12)
-model_arg.add_argument('--up_mode', type=str, default='shuffle')
+model_arg.add_argument("--load_weights_flag", type=int, default=0)
+model_arg.add_argument("--model_name", type=str, default="DFCAN")
 
 # Training / test parameters
 learn_arg = add_argument_group('Learning')
-learn_arg.add_argument('--mode', type=str, default='train',
-                       choices=['train', 'test', 'test-multi', 'gen-multi'])
-learn_arg.add_argument('--loss', type=str, default='1*L1')
-learn_arg.add_argument('--lr', type=float, default=1e-4)
-learn_arg.add_argument('--beta1', type=float, default=0.9)
-learn_arg.add_argument('--beta2', type=float, default=0.99)
-learn_arg.add_argument('--batch_size', type=int, default=16)
-learn_arg.add_argument('--val_batch_size', type=int, default=4)
-learn_arg.add_argument('--test_batch_size', type=int, default=1)
-learn_arg.add_argument('--test_mode', type=str, default='hard', help='Test mode to evaluate on SNU-FILM dataset')
-learn_arg.add_argument('--start_epoch', type=int, default=0)
-learn_arg.add_argument('--max_epoch', type=int, default=200)
-learn_arg.add_argument('--resume', action='store_true')
-learn_arg.add_argument('--resume_exp', type=str, default=None)
-learn_arg.add_argument('--fix_loaded', action='store_true', help='whether to fix updating all loaded parts of the model')
+learn_arg.add_argument("--gpu_id", type=str, default="4")
+learn_arg.add_argument("--gpu_memory_fraction", type=float, default=0.5)
+learn_arg.add_argument("--mixed_precision", type=str, default="1")
+learn_arg.add_argument("--total_iterations", type=int, default=100000)
+learn_arg.add_argument("--sample_interval", type=int, default=1000)
+learn_arg.add_argument("--validate_interval", type=int, default=2000)
+learn_arg.add_argument("--validate_num", type=int, default=1000)
+learn_arg.add_argument("--batch_size", type=int, default=4)
+learn_arg.add_argument("--start_lr", type=float, default=1e-4)
+learn_arg.add_argument("--lr_decay_factor", type=float, default=0.5)
 
 # Misc
-misc_arg = add_argument_group('Misc')
-misc_arg.add_argument('--exp_name', type=str, default='exp')
-misc_arg.add_argument('--log_iter', type=int, default=20)
-misc_arg.add_argument('--log_dir', type=str, default='logs')
-misc_arg.add_argument('--data_dir', type=str, default='data')
-misc_arg.add_argument('--num_gpu', type=int, default=1)
-misc_arg.add_argument('--random_seed', type=int, default=12345)
-misc_arg.add_argument('--num_workers', type=int, default=5)
-misc_arg.add_argument('--use_tensorboard', action='store_true')
-misc_arg.add_argument('--viz', action='store_true', help='whether to save images')
-misc_arg.add_argument('--lpips', action='store_true', help='evaluates LPIPS if set true')
+# misc_arg = add_argument_group('Misc')
+# misc_arg.add_argument('--exp_name', type=str, default='exp')
+# misc_arg.add_argument('--log_iter', type=int, default=20)
+# misc_arg.add_argument('--log_dir', type=str, default='logs')
+# misc_arg.add_argument('--data_dir', type=str, default='data')
+# misc_arg.add_argument('--num_gpu', type=int, default=1)
+# misc_arg.add_argument('--random_seed', type=int, default=12345)
+# misc_arg.add_argument('--num_workers', type=int, default=5)
+# misc_arg.add_argument('--use_tensorboard', action='store_true')
+# misc_arg.add_argument('--viz', action='store_true', help='whether to save images')
+# misc_arg.add_argument('--lpips', action='store_true', help='evaluates LPIPS if set true')
 
 def get_args():
     """Parses all of the arguments above
