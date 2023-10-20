@@ -6,7 +6,6 @@ import torch.nn as nn
 # 输入图像的二维截窗操作，并返回截窗后的图像
 # 原理没理解透 但返回数值与tf相同
 # img.shape = bs, ny, nx, ch || bs, ch, ny, nx
-
 def apodize2d(img, napodize=10):
     # # img.shape需要被改变 改变channel维度位置
     # img = img.permute(0, 2, 3, 1)
@@ -92,14 +91,10 @@ class FCALayer(nn.Module):
         # 转为TF的为维度 bt ch ny nx -> bt ny nx ch
         x_tf = x.permute(0, 2, 3, 1)
         absfft1 = fft2(x_tf) # 1 128 128 64
-        
-        absfft1 = fftshift(absfft1) # 1 128 128 128
-        
+        absfft1 = fftshift(absfft1)
         # 转为PT的为维度 bt ny nx ch-> bt ch ny nx
-        # 出现问题 1 128 128 128
         absfft1_pt = absfft1.permute(0, 3, 1, 2)
         
-
         c1 = self.conv1(absfft1_pt)
         r1 = self.relu(c1)
         gla_pooling = global_average_pooling(r1)
@@ -143,7 +138,7 @@ class ResidualGroup(nn.Module):
         out = self.FCABs(x) + x
         return out
 
-# DFCAN模型 尚未完成
+# DFCAN模型 测试可以跑通
 class DFCAN(nn.Module):
     def __init__(self, n_ResGroup=4, n_RCAB=4, scale=2, input_channels=9, out_channels=64):
         super(DFCAN, self).__init__()

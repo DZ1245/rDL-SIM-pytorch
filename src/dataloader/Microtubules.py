@@ -11,8 +11,12 @@ import cv2
 
 # 归一化尚未完成
 
+def prctile_norm(x, min_prc=0, max_prc=100):
+    y = (x-np.percentile(x, min_prc))/(np.percentile(x, max_prc)-np.percentile(x, min_prc)+1e-7)
+    return y
+
 class Microtubules_SR(Dataset):
-    def __init__(self, mode, height, width, resize_flag=0, scale=2, data_root="/data/home/dz/rDL_SIM/SR/Microtubules_result"):
+    def __init__(self, mode, height, width, norm_flag=1, resize_flag=0, scale=2, wf=0, data_root="/data/home/dz/rDL_SIM/SR/Microtubules_result"):
         # 根据模式选择数据
         if mode == "train":
             input_path = os.path.join(data_root,'train')
@@ -40,6 +44,8 @@ class Microtubules_SR(Dataset):
         self.scale = scale
         self.height = height
         self.width = width
+        self.norm_flag = norm_flag
+        self.wf = wf
 
         print('[%d] images ready to be loaded' % len(self.imglist_input))
 
@@ -65,6 +71,19 @@ class Microtubules_SR(Dataset):
             gt = imageio.imread(imgpaths_gt).astype(np.float)
 
         # 增加归一化判断
+        if self.norm_flag:
+            curBatch = prctile_norm(np.array(curBatch))
+            gt = prctile_norm(gt)
+        else:
+            curBatch = np.array(curBatch) / 65535
+            gt = gt / 65535
+
+        # wf进行降为判断 放在训练中算了
+        # if self.wf == 1:
+        #     image_batch = np.mean(image_batch, 3)
+        #     for b in range(batch_size):
+        #         image_batch[b, :, :] = prctile_norm(image_batch[b, :, :])
+        #     image_batch = image_batch[:, :, :, np.newaxis]
 
         batch  = {
             'input' : curBatch,
@@ -77,6 +96,6 @@ class Microtubules_SR(Dataset):
     def __len__(self):
         return len(self.imglist_input)
     
-def get_loader(mode, height, width, resize_flag, scale, batch_size, data_root,shuffle=False, num_workers=0):
-    dataset = Microtubules_SR(mode, height, width, resize_flag, scale, data_root)
+def get_loader(mode, height, width, norm_flag, resize_flag, scale, wf, batch_size, data_root,shuffle=False, num_workers=0):
+    dataset = Microtubules_SR(mode, height, width, norm_flag, resize_flag, scale, wf, data_root)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)

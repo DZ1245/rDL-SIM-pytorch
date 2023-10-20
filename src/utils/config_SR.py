@@ -36,6 +36,7 @@ model_arg.add_argument("--model_name", type=str, default="DFCAN")
 
 # Training / test parameters
 learn_arg = add_argument_group('Learning')
+learn_arg.add_argument("--num_gpu", type=int, default=1)
 learn_arg.add_argument("--gpu_id", type=str, default="4")
 learn_arg.add_argument("--gpu_memory_fraction", type=float, default=0.5)
 learn_arg.add_argument("--mixed_precision", type=str, default="1")
