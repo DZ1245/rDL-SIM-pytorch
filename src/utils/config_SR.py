@@ -15,7 +15,7 @@ def add_argument_group(name):
 dir_arg = add_argument_group('Directory')
 dir_arg.add_argument('--root_path', type=str, default='/data/home/dz/rDL_SIM/SR/')
 dir_arg.add_argument("--data_folder", type=str, default="Microtubules")
-dir_arg.add_argument("--save_weights_path", type=str, default="../trained_models/SR_Inference_Module/")
+dir_arg.add_argument("--save_weights_path", type=str, default="./trained_models/SR_Inference_Module/")
 dir_arg.add_argument("--save_weights_suffix", type=str, default="")
 
 # Dataset
@@ -38,7 +38,6 @@ model_arg.add_argument("--model_name", type=str, default="DFCAN")
 learn_arg = add_argument_group('Learning')
 learn_arg.add_argument("--num_gpu", type=int, default=1)
 learn_arg.add_argument("--gpu_id", type=str, default="4")
-learn_arg.add_argument("--gpu_memory_fraction", type=float, default=0.5)
 learn_arg.add_argument("--mixed_precision", type=str, default="1")
 learn_arg.add_argument("--total_iterations", type=int, default=100000)
 learn_arg.add_argument("--sample_interval", type=int, default=1000)
@@ -47,7 +46,8 @@ learn_arg.add_argument("--validate_num", type=int, default=1000)
 learn_arg.add_argument("--batch_size", type=int, default=4)
 learn_arg.add_argument("--start_lr", type=float, default=1e-4)
 learn_arg.add_argument("--lr_decay_factor", type=float, default=0.5)
-
+learn_arg.add_argument('--beta1', type=float, default=0.9)
+learn_arg.add_argument('--beta2', type=float, default=0.99)
 # Misc
 # misc_arg = add_argument_group('Misc')
 # misc_arg.add_argument('--exp_name', type=str, default='exp')
