@@ -9,6 +9,8 @@ import tifffile as tiff
 import imageio
 import cv2
 
+# 归一化尚未完成
+
 class Microtubules_SR(Dataset):
     def __init__(self, mode, height, width, resize_flag=0, scale=2, data_root="/data/home/dz/rDL_SIM/SR/Microtubules_result"):
         # 根据模式选择数据
@@ -61,6 +63,8 @@ class Microtubules_SR(Dataset):
                     img = cv2.resize(img, (self.height * self.scale, self.width * self.scale))
                 curBatch.append(img)
             gt = imageio.imread(imgpaths_gt).astype(np.float)
+
+        # 增加归一化判断
 
         batch  = {
             'input' : curBatch,
