@@ -11,7 +11,7 @@ from torch.cuda.amp import autocast, GradScaler
 import utils.config_SR as config_SR
 from utils.loss import MSESSIMLoss, AverageMeter
 from utils.pytorch_ssim import SSIM
-from skimage.measure import compare_psnr
+from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 
 from utils.checkpoint import save_checkpoint
 
@@ -61,15 +61,19 @@ data_root = root_path + dataset
 
 save_weights_path = save_weights_path + data_folder + save_weights_suffix + "/"
 save_weights_file = save_weights_path + data_folder + "_SR"
+exp_path = save_weights_path + exp_name + '/'
 
-sample_path = save_weights_path + exp_name + "/sampled/"
-log_path = save_weights_path + exp_name + "/log/"
+sample_path = exp_path  + "sampled/"
+log_path = exp_path  + "log/"
+
+if not os.path.exists(exp_path):
+    os.makedirs(exp_path)
 if not os.path.exists(save_weights_path):
-    os.mkdir(save_weights_path)
+    os.makedirs(save_weights_path)
 if not os.path.exists(sample_path):
-    os.mkdir(sample_path)
+    os.makedirs(sample_path)
 if not os.path.exists(log_path):
-    os.mkdir(log_path)
+    os.makedirs(log_path)
 
 
 # --------------------------------------------------------------------------------
@@ -147,7 +151,7 @@ def train(epoch):
         Loss_av.update(loss.item())
 
         # 其他训练步骤...
-        if  batch_idx % log_iter == 0:
+        if  batch_idx!=0 and batch_idx % log_iter == 0:
             print('Train Epoch: {} [{}/{}]\tLoss: {:.6f}\tLr: {:.6f}\tTime({:.2f})'.format(
                 epoch, batch_idx, len(train_loader), Loss_av.avg, optimizer.param_groups[-1]['lr'], time.time() - t))
             t = time.time()
@@ -179,7 +183,7 @@ def val(epoch):
                 loss = loss_function(outputs, gts)
             Loss_av.update(loss.item())
 
-            if  batch_idx % log_iter == 0:
+            if  batch_idx!=0 and batch_idx % log_iter == 0:
                 print('Val Epoch: {} [{}/{}]\tLoss: {:.6f}\tTime({:.2f})'.format(
                     epoch, batch_idx, len(val_loader), Loss_av.avg, time.time() - t))
                 t = time.time()
