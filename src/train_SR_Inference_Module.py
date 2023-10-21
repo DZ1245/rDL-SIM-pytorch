@@ -1,4 +1,6 @@
 import os
+import time
+
 import torch
 from torch.optim import AdamW
 from torch.cuda.amp import autocast, GradScaler
@@ -42,6 +44,7 @@ scale_factor = args.scale_factor
 norm_flag = args.norm_flag
 resize_flag = args.resize_flag
 num_workers = args.num_workers
+log_iter = args.log_iter
 wf = 0
 
 # define and make output dir
@@ -78,9 +81,11 @@ if args.cuda:
 if model_name == "DFCAN":
     from model.DFCAN import DFCAN
     model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=2, input_channels=input_channels, out_channels=64)
+    print("DFCAN model create")
 # Just make every model to DataParallel
 # print(model)
-model = torch.nn.DataParallel(model).to(device)
+model.double().to(device)
+model = torch.nn.DataParallel(model)
 
 optimizer = AdamW(model.parameters(), lr=start_lr, betas=(beta1,beta2))
 # Learning Rate Scheduler
@@ -103,23 +108,48 @@ val_loader = get_loader('val', input_height, input_width, norm_flag, resize_flag
 # 创建 GradScaler 以处理梯度缩放
 scaler = GradScaler()
 
-# 训练中使用autocast进行混合精度计算
-# 定义训练循环
-for epoch in range(total_epoch):
+
+# --------------------------------------------------------------------------------
+#                                   train model
+# --------------------------------------------------------------------------------
+def train(epoch):
+    model.train()
+    loss_function.train()
+
+    t = time.time()
+    # 训练中使用autocast进行混合精度计算
     for batch_idx, batch_info in enumerate(train_loader):
-        break
         # 将模型和优化器放入自动混合精度上下文
-        # with autocast():
+        with autocast():
+            inputs = batch_info['input'].to(device)
+            gts = batch_info['gt'].to(device)
             # 前向传播
-        #     outputs = model(inputs)
-        #     loss = compute_loss(outputs, targets)
+            outputs = model(inputs)
+            loss = loss_function(outputs, gts)
         
-        # # 反向传播和梯度更新
-        # optimizer.zero_grad()
-        # scaler.scale(loss).backward()
-        # scaler.step(optimizer)
-        # scaler.update()
-        
+        # 反向传播和梯度更新
+        optimizer.zero_grad()
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
+
         # 其他训练步骤...
-    break
-# 模型保存和评估...
+        if batch_idx % log_iter == 0:
+            print('Train Epoch: {} [{}/{}]\tLoss: {:.6f}\tLr: {:.6f}\tTime({:.2f})'.format(
+                epoch, batch_idx, len(train_loader), loss.item(), optimizer.param_groups[-1]['lr'], time.time() - t))
+            t = time.time()
+
+        
+def test(epoch):
+    model.eval()
+    loss_function.eval()
+
+def main():
+    # 定义训练循环
+    for epoch in range(total_epoch):
+        train(epoch)
+        # 模型保存和评估...
+        break
+
+if __name__ == "__main__":
+    main()

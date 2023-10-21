@@ -53,7 +53,7 @@ learn_arg.add_argument('--ssim_weight', type=float, default=1e-2)
 # Misc
 misc_arg = add_argument_group('Misc')
 # misc_arg.add_argument('--exp_name', type=str, default='exp')
-# misc_arg.add_argument('--log_iter', type=int, default=20)
+misc_arg.add_argument('--log_iter', type=int, default=20)
 # misc_arg.add_argument('--log_dir', type=str, default='logs')
 # misc_arg.add_argument('--data_dir', type=str, default='data')
 misc_arg.add_argument('--num_gpu', type=int, default=1)

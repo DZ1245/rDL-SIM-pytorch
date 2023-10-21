@@ -3,6 +3,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+# CUDA存储数据
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
 # 输入图像的二维截窗操作，并返回截窗后的图像
 # 原理没理解透 但返回数值与tf相同
 # img.shape = bs, ny, nx, ch || bs, ch, ny, nx
@@ -16,7 +20,7 @@ def apodize2d(img, napodize=10):
     imageDown = img[:, ny-napodize:, :, :]
     diff = (imageDown.flip(1) - imageUp) / 2
     l = torch.arange(napodize)
-    fact_raw = 1 - torch.sin((l + 0.5) / napodize * np.pi / 2)
+    fact_raw = (1 - torch.sin((l + 0.5) / napodize * np.pi / 2)).to(device)
     fact = fact_raw.view(1, -1, 1, 1).to(torch.float32)
     fact = fact.expand(bs, -1, nx, ch)
     factor = diff * fact
