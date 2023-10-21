@@ -11,6 +11,8 @@ from torch.cuda.amp import autocast, GradScaler
 import utils.config_SR as config_SR
 from utils.loss import MSESSIMLoss, AverageMeter
 from utils.pytorch_ssim import SSIM
+from skimage.measure import compare_psnr
+
 from utils.checkpoint import save_checkpoint
 
 # --------------------------------------------------------------------------------
@@ -208,22 +210,27 @@ def sample_img(epoch):
 
     r, c = 3, 3
     img_show, gt_show, output_show = [], [], []
-    mses, ssims = [], []
+    mses, ssims, psnrs = [], [], []
     
     for  i in range(3):
-        img_out = outputs[i]
-        img_gt = gts[i]
-        img_show.append(np.mean(inputs[i].detach().cpu().numpy(),axis=0))
-        gt_show.append(img_gt.detach().cpu().numpy())
-        output_show.append(img_out.detach().cpu().numpy())
+        img_out = outputs[i].detach().cpu().numpy()
+        img_gt = gts[i].detach().cpu().numpy()
+        img_input = inputs[i].detach().cpu().numpy()
+
+        img_show.append(np.mean(img_input,axis=0))
+        gt_show.append(img_gt)
+        output_show.append(img_out)
         mses.append(mse_loss(img_out, img_gt))
         ssims.append(ssim(img_out.unsqueeze(0), img_gt.unsqueeze(0)))
+
+        data_range = np.max(img_gt) - np.min(img_gt)
+        psnrs.append(compare_psnr(img_gt, img_out, data_range))
 
     # show some examples
     fig, axs = plt.subplots(r, c)
     cnt = 0
     for row in range(r):
-        axs[row, 1].set_title('MSE=%.4f, SSIM=%.4f' % (mses[row], ssims[row]))
+        axs[row, 1].set_title('MSE=%.4f, SSIM=%.4f, PSNR=%.4f' % (mses[row], ssims[row], psnrs[row]))
         for col, image in enumerate([img_show, output_show, gt_show]):
             axs[row, col].imshow(np.squeeze(image[row]))
             axs[row, col].axis('off')
