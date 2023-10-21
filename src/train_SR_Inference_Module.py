@@ -1,12 +1,17 @@
 import os
 import time
+import numpy as np
+import matplotlib.pyplot as plt
 
 import torch
+import torch.nn as nn
 from torch.optim import AdamW
 from torch.cuda.amp import autocast, GradScaler
 
 import utils.config_SR as config_SR
-from utils.loss import MSESSIMLoss
+from utils.loss import MSESSIMLoss, AverageMeter
+from utils.pytorch_ssim import SSIM
+from utils.checkpoint import save_checkpoint
 
 # --------------------------------------------------------------------------------
 #                          instantiation for parameters
@@ -27,7 +32,7 @@ gpu_id = args.gpu_id
 mixed_precision = args.mixed_precision
 total_epoch = args.total_epoch
 sample_epoch = args.sample_epoch
-validate_interval = args.validate_interval
+validate_epoch = args.validate_epoch
 validate_num = args.validate_num
 batch_size = args.batch_size
 start_lr = args.start_lr
@@ -37,6 +42,7 @@ beta2 = args.beta2
 ssim_weight = args.ssim_weight
 
 dataset = args.dataset
+exp_name = args.exp_name
 input_height = args.input_height
 input_width = args.input_width
 input_channels = args.input_channels
@@ -49,12 +55,13 @@ wf = 0
 
 # define and make output dir
 # 数据集位置
-data_root = root_path + data_folder
+data_root = root_path + dataset
+
 save_weights_path = save_weights_path + data_folder + save_weights_suffix + "/"
 save_weights_file = save_weights_path + data_folder + "_SR"
 
-sample_path = save_weights_path + "sampled/"
-log_path = save_weights_path + "log/"
+sample_path = save_weights_path + exp_name + "/sampled/"
+log_path = save_weights_path + exp_name + "/log/"
 if not os.path.exists(save_weights_path):
     os.mkdir(save_weights_path)
 if not os.path.exists(sample_path):
@@ -102,12 +109,13 @@ loss_function = MSESSIMLoss(ssim_weight=ssim_weight)
 if dataset == 'Microtubules':
     from dataloader.Microtubules import get_loader
 
-train_loader = get_loader('train', input_height, input_width, norm_flag, resize_flag, scale_factor, wf, batch_size, data_root,True,num_workers)
-val_loader = get_loader('val', input_height, input_width, norm_flag, resize_flag, scale_factor, wf, batch_size, data_root,True,num_workers)
+train_loader = get_loader('train', input_height, input_width, norm_flag, resize_flag, 
+                          scale_factor, wf, batch_size, data_root,True,num_workers)
+val_loader = get_loader('val', input_height, input_width, norm_flag, resize_flag, 
+                        scale_factor, wf, batch_size, data_root,True,num_workers)
 
 # 创建 GradScaler 以处理梯度缩放
 scaler = GradScaler()
-
 
 # --------------------------------------------------------------------------------
 #                                   train model
@@ -115,6 +123,7 @@ scaler = GradScaler()
 def train(epoch):
     model.train()
     loss_function.train()
+    Loss_av = AverageMeter()
 
     t = time.time()
     # 训练中使用autocast进行混合精度计算
@@ -133,23 +142,123 @@ def train(epoch):
         scaler.step(optimizer)
         scaler.update()
 
-        # 其他训练步骤...
-        if batch_idx % log_iter == 0:
-            print('Train Epoch: {} [{}/{}]\tLoss: {:.6f}\tLr: {:.6f}\tTime({:.2f})'.format(
-                epoch, batch_idx, len(train_loader), loss.item(), optimizer.param_groups[-1]['lr'], time.time() - t))
-            t = time.time()
+        Loss_av.update(loss.item())
 
-        
-def test(epoch):
+        # 其他训练步骤...
+        if  batch_idx % log_iter == 0:
+            print('Train Epoch: {} [{}/{}]\tLoss: {:.6f}\tLr: {:.6f}\tTime({:.2f})'.format(
+                epoch, batch_idx, len(train_loader), Loss_av.avg, optimizer.param_groups[-1]['lr'], time.time() - t))
+            t = time.time()
+            Loss_av = AverageMeter()
+
+        # # 测试代码
+        # if(batch_idx > 5):
+        #     break
+
+
+# --------------------------------------------------------------------------------
+#                                   Val model
+# --------------------------------------------------------------------------------
+
+def val(epoch):
     model.eval()
     loss_function.eval()
+    Loss_av = AverageMeter()
 
+    t = time.time()
+    with torch.no_grad():
+        # 训练中使用autocast进行混合精度计算
+        for batch_idx, batch_info in enumerate(val_loader):
+            with autocast():
+                inputs = batch_info['input'].to(device)
+                gts = batch_info['gt'].to(device)
+                # 前向传播
+                outputs = model(inputs)
+                loss = loss_function(outputs, gts)
+            Loss_av.update(loss.item())
+
+            if  batch_idx % log_iter == 0:
+                print('Val Epoch: {} [{}/{}]\tLoss: {:.6f}\tTime({:.2f})'.format(
+                    epoch, batch_idx, len(val_loader), Loss_av.avg, time.time() - t))
+                t = time.time()
+                Loss_av = AverageMeter()
+            
+            # # 测试代码
+            # if(batch_idx > 5):
+            #     break
+        
+
+    return Loss_av.avg
+
+
+# --------------------------------------------------------------------------------
+#                                   Sample images
+# --------------------------------------------------------------------------------
+def sample_img(epoch):
+    model.eval()
+    mse_loss = nn.MSELoss()
+    ssim = SSIM() 
+
+    data_iterator = iter(val_loader)
+    val_batch = next(data_iterator)
+
+    inputs = val_batch['input'][:3].to(device)
+    gts = val_batch['gt'][:3].to(device)
+    outputs = model(inputs)
+
+    r, c = 3, 3
+    img_show, gt_show, output_show = [], [], []
+    mses, ssims = [], []
+    
+    for  i in range(3):
+        img_out = outputs[i]
+        img_gt = gts[i]
+        img_show.append(np.mean(inputs[i].detach().cpu().numpy(),axis=0))
+        gt_show.append(img_gt.detach().cpu().numpy())
+        output_show.append(img_out.detach().cpu().numpy())
+        mses.append(mse_loss(img_out, img_gt))
+        ssims.append(ssim(img_out.unsqueeze(0), img_gt.unsqueeze(0)))
+
+    # show some examples
+    fig, axs = plt.subplots(r, c)
+    cnt = 0
+    for row in range(r):
+        axs[row, 1].set_title('MSE=%.4f, SSIM=%.4f' % (mses[row], ssims[row]))
+        for col, image in enumerate([img_show, output_show, gt_show]):
+            axs[row, col].imshow(np.squeeze(image[row]))
+            axs[row, col].axis('off')
+        cnt += 1
+    fig.savefig(sample_path + '%d.png' % epoch)
+    plt.close()
+
+
+# --------------------------------------------------------------------------------
+#                                       Main
+# --------------------------------------------------------------------------------
 def main():
+    min_loss = torch.finfo(torch.float32).max
     # 定义训练循环
     for epoch in range(total_epoch):
         train(epoch)
         # 模型保存和评估...
-        break
+        test_loss = val(epoch)
+
+        if epoch % sample_epoch == 0:
+            sample_img(epoch)
+        
+        # save checkpoint
+        is_best = test_loss < min_loss
+        min_loss = min(test_loss, min_loss)
+        save_checkpoint({
+            'epoch': epoch,
+            'state_dict': model.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'min_loss': min_loss
+        }, is_best, args.exp_name, save_weights_path)
+
+        # update optimizer policy
+        scheduler.step(test_loss)
+    
 
 if __name__ == "__main__":
     main()

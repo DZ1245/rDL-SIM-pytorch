@@ -1,6 +1,23 @@
 import torch.nn as nn
 from utils.pytorch_ssim import SSIM
 
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
 class MSESSIMLoss(nn.Module):
     def __init__(self,mse_weight=1.0,ssim_weight=1e-2):
         super(MSESSIMLoss, self).__init__()
@@ -16,7 +33,7 @@ class MSESSIMLoss(nn.Module):
 
         # 计算损失
         mse_l = mse_loss(predicted, target)
-        ssim_l = ssim_loss(predicted, target)
+        ssim_l = 1 - ssim_loss(predicted, target)
 
         # 计算组合损失
         combined_loss = self.mse_weight * mse_l + self.ssim_weight * ssim_l
