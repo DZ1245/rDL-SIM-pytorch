@@ -224,11 +224,11 @@ def sample_img(epoch):
         img_show.append(np.mean(img_input,axis=0))
         gt_show.append(img_gt)
         output_show.append(img_out)
-        mses.append(mse_loss(img_out, img_gt))
-        ssims.append(ssim(img_out.unsqueeze(0), img_gt.unsqueeze(0)))
+        mses.append(mse_loss(outputs[i], gts[i]))
+        ssims.append(ssim(outputs[i].unsqueeze(0), gts[i].unsqueeze(0)))
 
         data_range = np.max(img_gt) - np.min(img_gt)
-        psnrs.append(compare_psnr(img_gt, img_out, data_range))
+        psnrs.append(compare_psnr(img_gt, img_out, data_range=data_range))
 
     # show some examples
     fig, axs = plt.subplots(r, c)
