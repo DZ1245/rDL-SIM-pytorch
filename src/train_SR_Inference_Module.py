@@ -79,7 +79,9 @@ if not os.path.exists(log_path):
 # --------------------------------------------------------------------------------
 #                                  GPU env set
 # --------------------------------------------------------------------------------
-os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
+# os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+
 device = torch.device('cuda' if args.cuda else 'cpu')
 torch.backends.cudnn.enabled = True
 torch.backends.cudnn.benchmark = True
@@ -107,7 +109,6 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
 
 # MSEloss + SSIMloss
 loss_function = MSESSIMLoss(ssim_weight=ssim_weight)
-
 
 # --------------------------------------------------------------------------------
 #                         select dataset and dataloader
@@ -165,7 +166,6 @@ def train(epoch):
 # --------------------------------------------------------------------------------
 #                                   Val model
 # --------------------------------------------------------------------------------
-
 def val(epoch):
     model.eval()
     loss_function.eval()
