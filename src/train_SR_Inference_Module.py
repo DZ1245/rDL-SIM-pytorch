@@ -13,7 +13,7 @@ from utils.loss import MSESSIMLoss, AverageMeter
 from utils.pytorch_ssim import SSIM
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 
-from utils.checkpoint import save_checkpoint
+from utils.checkpoint import save_checkpoint, load_checkpoint
 
 # --------------------------------------------------------------------------------
 #                          instantiation for parameters
@@ -30,7 +30,6 @@ load_weights_flag = args.load_weights_flag
 model_name = args.model_name
 
 num_gpu = args.num_gpu
-gpu_id = args.gpu_id
 mixed_precision = args.mixed_precision
 total_epoch = args.total_epoch
 sample_epoch = args.sample_epoch
@@ -45,6 +44,7 @@ ssim_weight = args.ssim_weight
 
 dataset = args.dataset
 exp_name = args.exp_name
+resume_name = args.resume_name
 input_height = args.input_height
 input_width = args.input_width
 input_channels = args.input_channels
@@ -53,6 +53,7 @@ norm_flag = args.norm_flag
 resize_flag = args.resize_flag
 num_workers = args.num_workers
 log_iter = args.log_iter
+mode = 'train'
 wf = 0
 
 # define and make output dir
@@ -99,6 +100,7 @@ if model_name == "DFCAN":
     print("DFCAN model create")
 # Just make every model to DataParallel
 # print(model)
+
 model.double().to(device)
 model = torch.nn.DataParallel(model)
 
@@ -109,6 +111,12 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
 
 # MSEloss + SSIMloss
 loss_function = MSESSIMLoss(ssim_weight=ssim_weight)
+
+# If resume, load checkpoint: model + optimizer
+start_epoch = 0
+if load_weights_flag==1:
+    start_epoch = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer, start_lr)
+
 
 # --------------------------------------------------------------------------------
 #                         select dataset and dataloader
@@ -249,7 +257,7 @@ def sample_img(epoch):
 def main():
     min_loss = torch.finfo(torch.float32).max
     # 定义训练循环
-    for epoch in range(total_epoch):
+    for epoch in range(start_epoch, total_epoch):
         train(epoch)
         # 模型保存和评估...
         test_loss = val(epoch)
@@ -267,7 +275,7 @@ def main():
             'min_loss': min_loss
         }, is_best, args.exp_name, save_weights_path)
 
-        # update optimizer policy
+        # # update optimizer policy
         scheduler.step(test_loss)
     
 

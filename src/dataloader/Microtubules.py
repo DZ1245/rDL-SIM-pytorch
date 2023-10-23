@@ -6,7 +6,6 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
 import tifffile as tiff
-import imageio
 import cv2
 
 def prctile_norm(x, min_prc=0, max_prc=100):
@@ -62,7 +61,7 @@ class Microtubules_SR(Dataset):
             img_path.sort()
             curBatch = []
             for cur in img_path:
-                img = imageio.imread(cur).astype(np.float)
+                img = tiff.imread(cur).astype(np.float)
                 if self.resize_flag == 1:
                     img = cv2.resize(img, (self.height * self.scale, self.width * self.scale))
                 curBatch.append(img)

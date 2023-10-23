@@ -48,11 +48,12 @@ learn_arg.add_argument("--start_lr", type=float, default=1e-4)
 learn_arg.add_argument("--lr_decay_factor", type=float, default=0.5)
 learn_arg.add_argument('--beta1', type=float, default=0.9)
 learn_arg.add_argument('--beta2', type=float, default=0.99)
-learn_arg.add_argument('--ssim_weight', type=float, default=1e-2)
+learn_arg.add_argument('--ssim_weight', type=float, default=1e-1)
 
 # Misc
 misc_arg = add_argument_group('Misc')
 misc_arg.add_argument('--exp_name', type=str, default='exp')
+misc_arg.add_argument('--resume_name', type=str, default='')
 misc_arg.add_argument('--log_iter', type=int, default=20)
 # misc_arg.add_argument('--log_dir', type=str, default='logs')
 # misc_arg.add_argument('--data_dir', type=str, default='data')
