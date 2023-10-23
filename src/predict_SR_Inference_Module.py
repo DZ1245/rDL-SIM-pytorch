@@ -75,9 +75,11 @@ for raw in raw_list:
         inputs = inputs.to(device)
         outputs = model(inputs)
     
+    out = outputs[0].detach().cpu().numpy()
+    out = out * 65535
     out_path = os.path.join(result_path,raw[:-3] + 'tif')
     print(outputs)
-    tiff.imwrite(out_path, np.squeeze(outputs[0].detach().cpu().numpy()))
+    tiff.imwrite(out_path, out)
 
 
 

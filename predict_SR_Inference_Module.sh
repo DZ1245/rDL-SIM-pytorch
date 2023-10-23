@@ -3,6 +3,6 @@ python src/predict_SR_Inference_Module.py --root_path /mnt/data2_16T/datasets/zh
                                           --data_folder Microtubules \
                                           --dataset Microtubules \
                                           --model_name DFCAN \
-                                          --load_weights_flag 1 --norm_flag 0\
+                                          --load_weights_flag 1 --norm_flag 0 \
                                           --exp_name norm_flag_0 --resume_name norm_flag_0 \
 

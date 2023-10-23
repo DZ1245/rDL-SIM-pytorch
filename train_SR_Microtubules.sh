@@ -4,7 +4,7 @@ python src/train_SR_Inference_Module.py --root_path /mnt/data2_16T/datasets/zhi.
                                         --dataset Microtubules \
                                         --input_height 128 --input_width 128 --input_channels 9 \
                                         --model_name DFCAN \
-                                        --load_weights_flag 1 --norm_flag 0 \
+                                        --load_weights_flag 0 --norm_flag 0 \
                                         --total_epoch 10000 --sample_epoch 2 \
                                         --log_iter 10 \
                                         --batch_size 52 --start_lr 1e-4 --lr_decay_factor 0.5 \
