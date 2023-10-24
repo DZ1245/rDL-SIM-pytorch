@@ -1,6 +1,7 @@
 import os
 import torch
 import shutil
+from collections import OrderedDict
 
 def update_lr(optimizer, lr):
     for param_group in optimizer.param_groups:
@@ -33,34 +34,39 @@ def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimi
         start_epoch = 0
 
     # filter out different keys or those with size mismatch
-    model_dict = model.state_dict()
-    ckpt_dict = {}
+    model_dict = OrderedDict()
+    for k,v in checkpoint['state_dict'].items():
+        model_dict[k.replace('module.','')] = v
+    # model_dict = model.state_dict()
+    # ckpt_dict = {}
     mismatch = False
-    for k, v in checkpoint['state_dict'].items():
-        if k in model_dict:
-            if model_dict[k].size() == v.size():
-                ckpt_dict[k] = v
-            else:
-                print('Size mismatch while loading!   %s != %s   Skipping %s...'
-                      % (str(model_dict[k].size()), str(v.size()), k))
-                mismatch = True
-        else:
-            mismatch = True
-    if len(model.state_dict().keys()) > len(ckpt_dict.keys()):
-        mismatch = True
-    # Overwrite parameters to model_dict
-    model_dict.update(ckpt_dict)
-    # Load to model
-    model.load_state_dict(model_dict)
+    # for k, v in checkpoint['state_dict'].items():
+    #     if k in model_dict:
+    #         if model_dict[k].size() == v.size():
+    #             ckpt_dict[k] = v
+    #         else:
+    #             print('Size mismatch while loading!   %s != %s   Skipping %s...'
+    #                   % (str(model_dict[k].size()), str(v.size()), k))
+    #             mismatch = True
+    #     else:
+    #         mismatch = True
+    # if len(model.state_dict().keys()) > len(ckpt_dict.keys()):
+    #     mismatch = True
+    # # Overwrite parameters to model_dict
+    # model_dict.update(ckpt_dict)
+    # # Load to model
+    # print(mismatch)
+    # print(model.load_state_dict(model_dict, strict=True))
     # if size mismatch, give up on loading optimizer; if resuming from other experiment, also don't load optimizer
     if (not mismatch) and (optimizer is not None) and (resume_exp is not None):
         optimizer.load_state_dict(checkpoint['optimizer'])
         update_lr(optimizer, lr)
-    if fix_loaded:
-        for k, param in model.named_parameters():
-            if k in ckpt_dict.keys():
-                print(k)
-                param.requires_grad = False
+    # if fix_loaded:
+    #     for k, param in model.named_parameters():
+    #         if k in ckpt_dict.keys():
+    #             print(k)
+    #             param.requires_grad = False
     print("loaded checkpoint %s" % load_name)
-    del checkpoint, ckpt_dict, model_dict
+    # del checkpoint, ckpt_dict, model_dict
+    del checkpoint, model_dict
     return start_epoch

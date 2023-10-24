@@ -2,18 +2,24 @@ import os
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+import tifffile as tiff
 
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
 from torch.cuda.amp import autocast, GradScaler
 
+from utils.read_mrc import read_mrc
 import utils.config_SR as config_SR
 from utils.loss import MSESSIMLoss, AverageMeter
 from utils.pytorch_ssim import SSIM
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 
 from utils.checkpoint import save_checkpoint, load_checkpoint
+
+def prctile_norm(x, min_prc=0, max_prc=100):
+    y = (x-np.percentile(x, min_prc))/(np.percentile(x, max_prc)-np.percentile(x, min_prc)+1e-7)
+    return y
 
 # --------------------------------------------------------------------------------
 #                          instantiation for parameters
@@ -67,8 +73,7 @@ exp_path = save_weights_path + exp_name + '/'
 sample_path = exp_path  + "sampled/"
 log_path = exp_path  + "log/"
 
-if not os.path.exists(exp_path):
-    os.makedirs(exp_path)
+
 if not os.path.exists(save_weights_path):
     os.makedirs(save_weights_path)
 if not os.path.exists(sample_path):
@@ -101,7 +106,9 @@ if model_name == "DFCAN":
 # Just make every model to DataParallel
 # print(model)
 
-model.double().to(device)
+model.to(device)
+if load_weights_flag==1:
+    start_epoch = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer, start_lr)
 model = torch.nn.DataParallel(model)
 
 optimizer = AdamW(model.parameters(), lr=start_lr, betas=(beta1,beta2))
@@ -130,7 +137,7 @@ val_loader = get_loader('val', input_height, input_width, norm_flag, resize_flag
                         scale_factor, wf, batch_size, data_root,True,num_workers)
 
 # 创建 GradScaler 以处理梯度缩放
-scaler = GradScaler()
+# scaler = GradScaler()
 
 # --------------------------------------------------------------------------------
 #                                   train model
@@ -144,18 +151,29 @@ def train(epoch):
     # 训练中使用autocast进行混合精度计算
     for batch_idx, batch_info in enumerate(train_loader):
         # 将模型和优化器放入自动混合精度上下文
-        with autocast():
-            inputs = batch_info['input'].to(device)
-            gts = batch_info['gt'].to(device)
-            # 前向传播
-            outputs = model(inputs)
-            loss = loss_function(outputs, gts)
+        # with autocast():
+        #     inputs = batch_info['input'].to(device)
+        #     gts = batch_info['gt'].to(device)
+        #     # 前向传播
+        #     outputs = model(inputs)
+        #     loss = loss_function(outputs, gts)
         
-        # 反向传播和梯度更新
+        # # 反向传播和梯度更新
+        # optimizer.zero_grad()
+        # scaler.scale(loss).backward()
+        # scaler.step(optimizer)
+        # scaler.update()
+
+        # 不使用混合精度
+        inputs = batch_info['input'].to(device)
+        gts = batch_info['gt'].to(device)
+        # 前向传播
+        outputs = model(inputs)
+        loss = loss_function(outputs, gts)
+        
         optimizer.zero_grad()
-        scaler.scale(loss).backward()
-        scaler.step(optimizer)
-        scaler.update()
+        loss.backward()
+        optimizer.step()
 
         Loss_av.update(loss.item())
 
@@ -183,25 +201,26 @@ def val(epoch):
     with torch.no_grad():
         # 训练中使用autocast进行混合精度计算
         for batch_idx, batch_info in enumerate(val_loader):
-            with autocast():
-                inputs = batch_info['input'].to(device)
-                gts = batch_info['gt'].to(device)
-                # 前向传播
-                outputs = model(inputs)
-                loss = loss_function(outputs, gts)
+            # with autocast():
+            #     inputs = batch_info['input'].to(device)
+            #     gts = batch_info['gt'].to(device)
+            #     # 前向传播
+            #     outputs = model(inputs)
+            #     loss = loss_function(outputs, gts)
+            inputs = batch_info['input'].to(device)
+            gts = batch_info['gt'].to(device)
+            # 前向传播
+            outputs = model(inputs)
+            loss = loss_function(outputs, gts)
             Loss_av.update(loss.item())
 
-            if  batch_idx!=0 and batch_idx % log_iter == 0:
-                print('Val Epoch: {} [{}/{}]\tLoss: {:.6f}\tTime({:.2f})'.format(
-                    epoch, batch_idx, len(val_loader), Loss_av.avg, time.time() - t))
-                t = time.time()
-                Loss_av = AverageMeter()
+        print('Val Epoch: {} \tLoss: {:.6f}\tTime({:.2f})'.format(
+                epoch, Loss_av.avg, time.time() - t))
             
             # # 测试代码
             # if(batch_idx > 5):
             #     break
         
-
     return Loss_av.avg
 
 
@@ -216,6 +235,7 @@ def sample_img(epoch):
     data_iterator = iter(val_loader)
     val_batch = next(data_iterator)
 
+    
     inputs = val_batch['input'][:3].to(device)
     gts = val_batch['gt'][:3].to(device)
     outputs = model(inputs)

@@ -53,25 +53,23 @@ class Microtubules_SR(Dataset):
 
         if imgpaths_input[-3:] == 'tif':
             # 直接单张tif
-            curBatch = tiff.imread(imgpaths_input).astype(np.float)
-            gt = tiff.imread(imgpaths_gt).astype(np.float)
+            curBatch = tiff.imread(imgpaths_input).astype(np.float32)
+            gt = tiff.imread(imgpaths_gt).astype(np.float32)
         else:
             # 文件夹下存储图片数据
             img_path = glob.glob(imgpaths_input + '/*.tif')
             img_path.sort()
             curBatch = []
             for cur in img_path:
-                img = tiff.imread(cur).astype(np.float)
+                img = tiff.imread(cur).astype(np.float32)
                 if self.resize_flag == 1:
                     img = cv2.resize(img, (self.height * self.scale, self.width * self.scale))
                 curBatch.append(img)
             #gt = imageio.imread(imgpaths_gt).astype(np.float)
             gt = tiff.imread(imgpaths_gt).astype(np.float)
             
-            
-
         # 增加归一化判断
-        if self.norm_flag:
+        if self.norm_flag==1:
             curBatch = prctile_norm(np.array(curBatch))
             gt = prctile_norm(gt)
         else:

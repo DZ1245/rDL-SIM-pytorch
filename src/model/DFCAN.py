@@ -50,6 +50,7 @@ def fft2(input):
     temp_complex = torch.complex(temp, torch.zeros_like(temp))
     fft = torch.fft.fftn(temp_complex, dim=(-2, -1))
     absfft = (torch.abs(fft) + 1e-8) ** 0.1
+
     output = absfft.permute(0, 2, 3, 1)
     return output
 

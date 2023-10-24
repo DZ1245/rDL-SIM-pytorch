@@ -7,6 +7,9 @@ from torch.cuda.amp import autocast
 import utils.config_SR as config_SR
 from utils.read_mrc import read_mrc
 from utils.checkpoint import load_checkpoint
+from utils.pytorch_ssim import SSIM
+
+from torch.optim import AdamW
 
 def prctile_norm(x, min_prc=0, max_prc=100):
     y = (x-np.percentile(x, min_prc))/(np.percentile(x, max_prc)-np.percentile(x, min_prc)+1e-7)
@@ -35,6 +38,7 @@ save_weights_path = save_weights_path + data_folder + save_weights_suffix + "/"
 
 raw_path = os.path.join('./Demo/Raw',data_folder)
 result_path = os.path.join('./Demo/Result',data_folder)
+gt_path = os.path.join('./Demo/GT',data_folder)
 
 if not os.path.exists(result_path):
     os.makedirs(result_path)
@@ -44,43 +48,55 @@ if model_name == "DFCAN":
     model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=2, input_channels=9, out_channels=64)
     print("DFCAN model create")
 model.to(device)
+# model = torch.nn.DataParallel(model)
 
 assert load_weights_flag==1
-_ = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, None, None)
+optimizer = AdamW(model.parameters(), lr=1e-4, betas=(0.9,0.99))
+# _ = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer=None, lr=None)
+start_epoch = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer, 1e-4)
 
 model.eval()
+
 raw_list = os.listdir(raw_path)
+ssim = SSIM()
+
 for raw in raw_list:
     p = os.path.join(raw_path, raw)
+    groud = os.path.join(gt_path, raw)
+
     if raw[-3:]=='mrc':
         header, data = read_mrc(p)
         input_height, input_weight, input_channels = header['nx'][0], header['ny'][0], header['nz'][0]
         inputs = data.astype(np.float32).transpose(2, 0, 1)
     elif raw[-3:]=='tif':
-        data = tiff.imread(p)
+        data = tiff.imread(p).astype(np.float32)
+        data_gt = tiff.imread(groud).astype(np.float32)
         input_channels, input_height, input_weight = data.shape
-        inputs = data.astype(np.float32)
+        inputs = data
 
     assert input_channels==9
 
-    if norm_flag:
-        inputs = prctile_norm(np.array(inputs))
+    if norm_flag==1:
+        inputs = prctile_norm(inputs)
+        gts = prctile_norm(data_gt)
+        print('prctile_norms')
     else:
         inputs = np.array(inputs) / 65535
+        gts = np.array(gts) / 65535
 
-    inputs = torch.Tensor(inputs).unsqueeze(0)
+        
+    # print(model)
 
-    print(inputs.size())
     with torch.no_grad():
-        inputs = inputs.to(device)
+        inputs = torch.Tensor(inputs).unsqueeze(0).to(device)
+        gts = torch.Tensor(gts).unsqueeze(0).to(device)
         outputs = model(inputs)
-    
+
+    print(outputs.size())
+    print(ssim(outputs, gts))
+
     out = outputs[0].detach().cpu().numpy()
-    out = out * 65535
+    out = np.uint16(out * 65535)
     out_path = os.path.join(result_path,raw[:-3] + 'tif')
-    print(outputs)
     tiff.imwrite(out_path, out)
-
-
-
-
+    tiff.imwrite('test.tif',np.uint16(inputs.cpu() * 65535))
