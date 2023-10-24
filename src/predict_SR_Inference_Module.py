@@ -4,16 +4,12 @@ import tifffile as tiff
 import torch
 from torch.cuda.amp import autocast
 
-import utils.config_SR as config_SR
+import config.config_SR as config_SR
 from utils.read_mrc import read_mrc
 from utils.checkpoint import load_checkpoint
 from utils.pytorch_ssim import SSIM
+from utils.utils import prctile_norm
 
-from torch.optim import AdamW
-
-def prctile_norm(x, min_prc=0, max_prc=100):
-    y = (x-np.percentile(x, min_prc))/(np.percentile(x, max_prc)-np.percentile(x, min_prc)+1e-7)
-    return y
 
 args, unparsed = config_SR.get_args()
 cwd = os.getcwd()
@@ -48,12 +44,10 @@ if model_name == "DFCAN":
     model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=2, input_channels=9, out_channels=64)
     print("DFCAN model create")
 model.to(device)
-# model = torch.nn.DataParallel(model)
 
 assert load_weights_flag==1
-optimizer = AdamW(model.parameters(), lr=1e-4, betas=(0.9,0.99))
-# _ = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer=None, lr=None)
-start_epoch = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer, 1e-4)
+_ = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer=None, lr=None)
+# start_epoch = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer, 1e-4)
 
 model.eval()
 

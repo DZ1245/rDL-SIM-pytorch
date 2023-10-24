@@ -2,24 +2,18 @@ import os
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-import tifffile as tiff
 
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
 from torch.cuda.amp import autocast, GradScaler
 
-from utils.read_mrc import read_mrc
-import utils.config_SR as config_SR
+import config.config_SR as config_SR
 from utils.loss import MSESSIMLoss, AverageMeter
 from utils.pytorch_ssim import SSIM
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 
 from utils.checkpoint import save_checkpoint, load_checkpoint
-
-def prctile_norm(x, min_prc=0, max_prc=100):
-    y = (x-np.percentile(x, min_prc))/(np.percentile(x, max_prc)-np.percentile(x, min_prc)+1e-7)
-    return y
 
 # --------------------------------------------------------------------------------
 #                          instantiation for parameters
@@ -105,35 +99,33 @@ if model_name == "DFCAN":
     print("DFCAN model create")
 # Just make every model to DataParallel
 # print(model)
-
 model.to(device)
-if load_weights_flag==1:
-    start_epoch = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer, start_lr)
-model = torch.nn.DataParallel(model)
 
 optimizer = AdamW(model.parameters(), lr=start_lr, betas=(beta1,beta2))
 # Learning Rate Scheduler
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode='min', factor=lr_decay_factor, patience=5, verbose=True)
 
-# MSEloss + SSIMloss
-loss_function = MSESSIMLoss(ssim_weight=ssim_weight)
-
 # If resume, load checkpoint: model + optimizer
 start_epoch = 0
 if load_weights_flag==1:
     start_epoch = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer, start_lr)
 
+model = torch.nn.DataParallel(model)
+
+# MSEloss + SSIMloss
+loss_function = MSESSIMLoss(ssim_weight=ssim_weight)
 
 # --------------------------------------------------------------------------------
 #                         select dataset and dataloader
 # --------------------------------------------------------------------------------
 if dataset == 'Microtubules':
-    from dataloader.Microtubules import get_loader
+    from dataloader.Microtubules import get_loader_SR
 
-train_loader = get_loader('train', input_height, input_width, norm_flag, resize_flag, 
+# SR_dataloader数据经过归一化处理
+train_loader = get_loader_SR('train', input_height, input_width, norm_flag, resize_flag, 
                           scale_factor, wf, batch_size, data_root,True,num_workers)
-val_loader = get_loader('val', input_height, input_width, norm_flag, resize_flag, 
+val_loader = get_loader_SR('val', input_height, input_width, norm_flag, resize_flag, 
                         scale_factor, wf, batch_size, data_root,True,num_workers)
 
 # 创建 GradScaler 以处理梯度缩放

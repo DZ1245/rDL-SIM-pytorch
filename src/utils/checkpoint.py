@@ -56,7 +56,7 @@ def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimi
     # model_dict.update(ckpt_dict)
     # # Load to model
     # print(mismatch)
-    # print(model.load_state_dict(model_dict, strict=True))
+    model.load_state_dict(model_dict, strict=True)
     # if size mismatch, give up on loading optimizer; if resuming from other experiment, also don't load optimizer
     if (not mismatch) and (optimizer is not None) and (resume_exp is not None):
         optimizer.load_state_dict(checkpoint['optimizer'])

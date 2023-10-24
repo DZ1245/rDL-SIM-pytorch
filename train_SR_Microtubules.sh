@@ -9,8 +9,8 @@ python src/train_SR_Inference_Module.py --root_path /mnt/data2_16T/datasets/zhi.
                                         --log_iter 10 \
                                         --batch_size 200 --start_lr 1e-4 --lr_decay_factor 0.5 \
                                         --ssim_weight 1e-1 \
-                                        --num_gpu 8 \
-                                        --load_weights_flag 1 \
+                                        --num_gpu 8 --num_workers 30\
+                                        --load_weights_flag 0 \
                                         --exp_name Model_fix_ckpoint \
                                         --resume_name Model_fix_ckpoint \
 
