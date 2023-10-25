@@ -19,7 +19,7 @@ def save_checkpoint(state, is_best, exp_name, save_path, filename='checkpoint.pt
     if is_best:
         shutil.copyfile(filename, directory + '/model_best.pth')
 
-def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimizer, lr, fix_loaded=False):
+def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimizer, lr, model_type='SR', fix_loaded=False):
     if resume_exp is None:
         resume_exp = exp_name
     if mode == 'test' :

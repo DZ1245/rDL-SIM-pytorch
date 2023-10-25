@@ -2,7 +2,6 @@ import numpy as np
 import numpy.fft as F
 import glob
 import scipy
-import tensorflow as tf
 import math
 from .Parameters_2DSIM import parameters
 from scipy.interpolate import interp1d

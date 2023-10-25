@@ -1,5 +1,5 @@
 CUDA_VISIBLE_DEVICES='0,1,2,3,4,5,6,7' CUDA_DEVICE_ORDER=PCI_BUS_ID \
-python src/train_SR_Inference_Module.py --root_path /mnt/data2_16T/datasets/zhi.deng/Biology_cell/rDL_SIM/SR/ \
+python train_SR_Inference_Module.py --root_path /mnt/data2_16T/datasets/zhi.deng/Biology_cell/rDL_SIM/SR/ \
                                         --data_folder Microtubules \
                                         --dataset Microtubules \
                                         --input_height 128 --input_width 128 --input_channels 9 \

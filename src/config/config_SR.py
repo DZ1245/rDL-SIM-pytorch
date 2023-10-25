@@ -15,7 +15,7 @@ def add_argument_group(name):
 dir_arg = add_argument_group('Directory')
 dir_arg.add_argument('--root_path', type=str, default='/data/home/dz/rDL_SIM/SR/')
 dir_arg.add_argument("--data_folder", type=str, default="Microtubules")
-dir_arg.add_argument("--save_weights_path", type=str, default="./trained_models/SR_Inference_Module/")
+dir_arg.add_argument("--save_weights_path", type=str, default="../trained_models/SR_Inference_Module/")
 dir_arg.add_argument("--save_weights_suffix", type=str, default="")
 
 # Dataset

@@ -79,8 +79,15 @@ class FCD(nn.Module):
         self.conv3 = nn.Conv2d(output_channels * (scale ** 2), input_channels, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
-        
-        return 
+        c1 = self.conv1(x)
+        lrelu1 = self.leaky_relu(c1)
+        rgs = self.ResGroup(lrelu1)
+        c2 = self.conv2(rgs + lrelu1)
+        lrelu2 = self.leaky_relu(c2)
+        cal1 = self.cal(lrelu2)
+        c3 = self.conv3(cal1)
+        output = self.leaky_relu(c3)
+        return output
 
 # 特征提取
 class Feature_Extracte(nn.Module):
@@ -99,17 +106,17 @@ class Feature_Extracte(nn.Module):
         c1 = self.conv1(x)
         lrelu1 = self.leaky_relu(c1)
         rgs = self.ResGroup(lrelu1)
-        c2 = self.conv2(rgs)
+        c2 = self.conv2(rgs + lrelu1)
         lrelu2 = self.leaky_relu(c2)
         out = lrelu2
         return out
 
 class rDL_Denoise(nn.Module):
-    def __init__(self,input_channels=9, output_channels=64, input_height=128, input_width=128, n_rgs=[5, 2, 5]):
+    def __init__(self, input_channels=3, output_channels=64, input_height=128, input_width=128, n_rgs=[5, 2, 5]):
         super(rDL_Denoise, self).__init__()
         self.PFE = Feature_Extracte(input_channels, output_channels, input_height, input_width,n_rgs[0])
         self.MPE = Feature_Extracte(input_channels, output_channels, input_height, input_width,n_rgs[1])
-        self.FCD = FCD(input_channels, output_channels, input_height, input_width,n_rgs[1])
+        self.FCD = FCD(input_channels, output_channels, input_height, input_width,n_rgs[2])
 
     def forward(self, inputs_PFE, inputs_MPE):
         pfe = self.PFE(inputs_PFE)

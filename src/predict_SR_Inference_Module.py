@@ -43,17 +43,14 @@ if model_name == "DFCAN":
     from model.DFCAN import DFCAN
     model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=2, input_channels=9, out_channels=64)
     print("DFCAN model create")
-model.to(device)
+model.double().to(device)
 
 assert load_weights_flag==1
 _ = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer=None, lr=None)
-# start_epoch = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer, 1e-4)
 
 model.eval()
-
 raw_list = os.listdir(raw_path)
 ssim = SSIM()
-
 for raw in raw_list:
     p = os.path.join(raw_path, raw)
     groud = os.path.join(gt_path, raw)
@@ -71,20 +68,20 @@ for raw in raw_list:
     assert input_channels==9
 
     if norm_flag==1:
-        inputs = prctile_norm(inputs)
-        gts = prctile_norm(data_gt)
+        inputs = prctile_norm(np.array(inputs))
+        gts = prctile_norm(np.array(data_gt))
         print('prctile_norms')
     else:
         inputs = np.array(inputs) / 65535
         gts = np.array(gts) / 65535
 
-        
-    # print(model)
+    inputs = torch.Tensor(inputs).unsqueeze(0).to(device)
+    gts = torch.Tensor(gts).unsqueeze(0).to(device)
+    print(model)
 
     with torch.no_grad():
-        inputs = torch.Tensor(inputs).unsqueeze(0).to(device)
-        gts = torch.Tensor(gts).unsqueeze(0).to(device)
-        outputs = model(inputs)
+        with autocast():
+            outputs = model(inputs)
 
     print(outputs.size())
     print(ssim(outputs, gts))
@@ -93,4 +90,7 @@ for raw in raw_list:
     out = np.uint16(out * 65535)
     out_path = os.path.join(result_path,raw[:-3] + 'tif')
     tiff.imwrite(out_path, out)
-    tiff.imwrite('test.tif',np.uint16(inputs.cpu() * 65535))
+
+
+
+

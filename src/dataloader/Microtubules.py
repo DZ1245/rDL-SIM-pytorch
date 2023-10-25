@@ -9,7 +9,7 @@ import tifffile as tiff
 import cv2
 
 class Microtubules_SR(Dataset):
-    def __init__(self, mode, height, width, norm_flag=1, resize_flag=0, scale=2, wf=0, data_root="/data/home/dz/rDL_SIM/SR/Microtubules_result"):
+    def __init__(self, mode, height, width, norm_flag=1, resize_flag=0, scale=2, wf=0, data_root="/data/home/dz/rDL_SIM/SR/Microtubules"):
         # 根据模式选择数据
         if mode == "train":
             input_path = os.path.join(data_root,'train')
@@ -62,7 +62,7 @@ class Microtubules_SR(Dataset):
                     img = cv2.resize(img, (self.height * self.scale, self.width * self.scale))
                 curBatch.append(img)
             #gt = imageio.imread(imgpaths_gt).astype(np.float)
-            gt = tiff.imread(imgpaths_gt).astype(np.float)
+            gt = tiff.imread(imgpaths_gt).astype(np.float32)
             
         # 增加归一化判断
         if self.norm_flag==1:
@@ -98,7 +98,7 @@ def get_loader_SR(mode, height, width, norm_flag, resize_flag, scale, wf, batch_
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)
 
 class Microtubules_DN(Dataset):
-    def __init__(self, mode, height, width, norm_flag=1, resize_flag=0, scale=2, wf=0, data_root="/data/home/dz/rDL_SIM/SR/Microtubules_result"):
+    def __init__(self, mode, data_root="/data/home/dz/rDL_SIM/SR/Microtubules_result"):
         # 根据模式选择数据
         if mode == "train":
             input_path = os.path.join(data_root,'train')
@@ -122,11 +122,6 @@ class Microtubules_DN(Dataset):
         for name in input_name:
             self.imglist_gt.append(os.path.join(gt_path, name))
 
-        self.resize_flag = resize_flag
-        self.scale = scale
-        self.height = height
-        self.width = width
-
         print('[%d] images ready to be loaded' % len(self.imglist_input))
 
 
@@ -145,11 +140,8 @@ class Microtubules_DN(Dataset):
             curBatch = []
             for cur in img_path:
                 img = tiff.imread(cur).astype(np.float32)
-                if self.resize_flag == 1:
-                    img = cv2.resize(img, (self.height * self.scale, self.width * self.scale))
                 curBatch.append(img)
-            #gt = imageio.imread(imgpaths_gt).astype(np.float)
-            gt = tiff.imread(imgpaths_gt).astype(np.float)
+            gt = tiff.imread(imgpaths_gt).astype(np.float32)
             
         batch  = {
             'input' : curBatch,
@@ -162,6 +154,6 @@ class Microtubules_DN(Dataset):
     def __len__(self):
         return len(self.imglist_input)
     
-def get_loader_DN(mode, height, width, norm_flag, resize_flag, scale, wf, batch_size, data_root,shuffle=False, num_workers=0):
-    dataset = Microtubules_DN(mode, height, width, norm_flag, resize_flag, scale, wf, data_root)
+def get_loader_DN(mode, batch_size, data_root,shuffle=False, num_workers=0):
+    dataset = Microtubules_DN(mode, data_root)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)

@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
-from torch.cuda.amp import autocast, GradScaler
 
 import config.config_SR as config_SR
 from utils.loss import MSESSIMLoss, AverageMeter
@@ -14,6 +13,7 @@ from utils.pytorch_ssim import SSIM
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 
 from utils.checkpoint import save_checkpoint, load_checkpoint
+
 
 # --------------------------------------------------------------------------------
 #                          instantiation for parameters
@@ -48,6 +48,7 @@ resume_name = args.resume_name
 input_height = args.input_height
 input_width = args.input_width
 input_channels = args.input_channels
+
 scale_factor = args.scale_factor
 norm_flag = args.norm_flag
 resize_flag = args.resize_flag
@@ -90,15 +91,14 @@ torch.manual_seed(args.random_seed)
 if args.cuda:
     torch.cuda.manual_seed(args.random_seed)
 
+
 # --------------------------------------------------------------------------------
 #                        select models optimizer and loss
 # --------------------------------------------------------------------------------
 if model_name == "DFCAN":
     from model.DFCAN import DFCAN
-    model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=2, input_channels=input_channels, out_channels=64)
+    model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=scale_factor, input_channels=input_channels, out_channels=64)
     print("DFCAN model create")
-# Just make every model to DataParallel
-# print(model)
 model.to(device)
 
 optimizer = AdamW(model.parameters(), lr=start_lr, betas=(beta1,beta2))
@@ -111,10 +111,12 @@ start_epoch = 0
 if load_weights_flag==1:
     start_epoch = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer, start_lr)
 
+# Just make every model to DataParallel
 model = torch.nn.DataParallel(model)
 
 # MSEloss + SSIMloss
 loss_function = MSESSIMLoss(ssim_weight=ssim_weight)
+
 
 # --------------------------------------------------------------------------------
 #                         select dataset and dataloader
@@ -128,8 +130,6 @@ train_loader = get_loader_SR('train', input_height, input_width, norm_flag, resi
 val_loader = get_loader_SR('val', input_height, input_width, norm_flag, resize_flag, 
                         scale_factor, wf, batch_size, data_root,True,num_workers)
 
-# 创建 GradScaler 以处理梯度缩放
-# scaler = GradScaler()
 
 # --------------------------------------------------------------------------------
 #                                   train model
