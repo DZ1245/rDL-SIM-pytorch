@@ -312,9 +312,9 @@ def train(epoch):
             start_time = datetime.datetime.now()
             Loss_av = AverageMeter()
     
-        # 测试代码
-        if(batch_idx > 5):
-            break
+        # # 测试代码
+        # if(batch_idx > 5):
+        #     break
 
 # --------------------------------------------------------------------------------
 #                                   Val model
@@ -324,6 +324,8 @@ def val(epoch):
     DN_model.eval()
     loss_function.eval()
     Loss_av = AverageMeter()
+    Loss_all = AverageMeter()
+    
     start_time = datetime.datetime.now()
     with torch.no_grad():
         for batch_idx, batch_info in enumerate(val_loader):
@@ -428,6 +430,7 @@ def val(epoch):
             loss = loss_function(outputs, gt_batch)
 
             Loss_av.update(loss.item())
+            Loss_all.update(loss.item())
 
             modamp_abs = np.mean(np.abs(modamp))
             elapsed_time = datetime.datetime.now() - start_time
@@ -438,9 +441,10 @@ def val(epoch):
                 start_time = datetime.datetime.now()
                 Loss_av = AverageMeter()
 
-            # 测试代码
-            if(batch_idx > 5):
-                break
+            # # 测试代码
+            # if(batch_idx > 5):
+            #     break
+    return Loss_all.avg
 
 # --------------------------------------------------------------------------------
 #                                  Sample images
