@@ -5,13 +5,16 @@ import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
+
+from torch.utils.tensorboard import SummaryWriter   
 from torch.optim import AdamW
+from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 
 import config.config_SR as config_SR
 from utils.loss import MSESSIMLoss, AverageMeter
 from utils.pytorch_ssim import SSIM
-from skimage.metrics import peak_signal_noise_ratio as compare_psnr
-
 from utils.checkpoint import save_checkpoint, load_checkpoint
 
 
@@ -29,12 +32,10 @@ save_weights_suffix = args.save_weights_suffix
 load_weights_flag = args.load_weights_flag
 model_name = args.model_name
 
-num_gpu = args.num_gpu
 mixed_precision = args.mixed_precision
 total_epoch = args.total_epoch
 sample_epoch = args.sample_epoch
 validate_epoch = args.validate_epoch
-validate_num = args.validate_num
 batch_size = args.batch_size
 start_lr = args.start_lr
 lr_decay_factor = args.lr_decay_factor
@@ -76,21 +77,24 @@ if not os.path.exists(sample_path):
 if not os.path.exists(log_path):
     os.makedirs(log_path)
 
-
 # --------------------------------------------------------------------------------
 #                                  GPU env set
 # --------------------------------------------------------------------------------
 # os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 
-device = torch.device('cuda' if args.cuda else 'cpu')
+local_rank = args.local_rank
+torch.cuda.set_device(local_rank)
+dist.init_process_group(backend='nccl') 
+device = torch.device("cuda", local_rank)
+
+# device = torch.device('cuda' if args.cuda else 'cpu')
 torch.backends.cudnn.enabled = True
 torch.backends.cudnn.benchmark = True
 
 torch.manual_seed(args.random_seed)
 if args.cuda:
     torch.cuda.manual_seed(args.random_seed)
-
 
 # --------------------------------------------------------------------------------
 #                        select models optimizer and loss
@@ -101,6 +105,7 @@ if model_name == "DFCAN":
     print("DFCAN model create")
 model.to(device)
 
+
 optimizer = AdamW(model.parameters(), lr=start_lr, betas=(beta1,beta2))
 # Learning Rate Scheduler
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -109,10 +114,12 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
 # If resume, load checkpoint: model + optimizer
 start_epoch = 0
 if load_weights_flag==1:
-    start_epoch = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer, start_lr)
+    start_epoch = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer, start_lr, local_rank)
+
+model = DDP(model, device_ids=[local_rank], output_device=local_rank)
 
 # Just make every model to DataParallel
-model = torch.nn.DataParallel(model)
+# model = torch.nn.DataParallel(model)
 
 # MSEloss + SSIMloss
 loss_function = MSESSIMLoss(ssim_weight=ssim_weight)
@@ -132,6 +139,14 @@ val_loader = get_loader_SR('val', input_height, input_width, norm_flag, resize_f
 
 
 # --------------------------------------------------------------------------------
+#                               define log writer
+# --------------------------------------------------------------------------------
+writer = SummaryWriter(log_path)
+def write_log(writer, names, logs, epoch):
+    writer.add_scalar(names, logs, epoch)
+
+
+# --------------------------------------------------------------------------------
 #                                   train model
 # --------------------------------------------------------------------------------
 def train(epoch):
@@ -142,20 +157,6 @@ def train(epoch):
     t = time.time()
     # 训练中使用autocast进行混合精度计算
     for batch_idx, batch_info in enumerate(train_loader):
-        # 将模型和优化器放入自动混合精度上下文
-        # with autocast():
-        #     inputs = batch_info['input'].to(device)
-        #     gts = batch_info['gt'].to(device)
-        #     # 前向传播
-        #     outputs = model(inputs)
-        #     loss = loss_function(outputs, gts)
-        
-        # # 反向传播和梯度更新
-        # optimizer.zero_grad()
-        # scaler.scale(loss).backward()
-        # scaler.step(optimizer)
-        # scaler.update()
-
         # 不使用混合精度
         inputs = batch_info['input'].to(device)
         gts = batch_info['gt'].to(device)
@@ -187,18 +188,17 @@ def train(epoch):
 def val(epoch):
     model.eval()
     loss_function.eval()
+    mse_loss = nn.MSELoss()
+    ssim = SSIM() 
+
     Loss_av = AverageMeter()
+    mse_av = AverageMeter()
+    ssim_av = AverageMeter()
 
     t = time.time()
     with torch.no_grad():
         # 训练中使用autocast进行混合精度计算
         for batch_idx, batch_info in enumerate(val_loader):
-            # with autocast():
-            #     inputs = batch_info['input'].to(device)
-            #     gts = batch_info['gt'].to(device)
-            #     # 前向传播
-            #     outputs = model(inputs)
-            #     loss = loss_function(outputs, gts)
             inputs = batch_info['input'].to(device)
             gts = batch_info['gt'].to(device)
             # 前向传播
@@ -206,13 +206,21 @@ def val(epoch):
             loss = loss_function(outputs, gts)
             Loss_av.update(loss.item())
 
-        print('Val Epoch: {} \tLoss: {:.6f}\tTime({:.2f})'.format(
-                epoch, Loss_av.avg, time.time() - t))
+            mse_av.update(mse_loss(outputs, gts))
+            ssim_av.update(ssim(outputs, gts))
             
             # # 测试代码
             # if(batch_idx > 5):
             #     break
-        
+
+    print('Val Epoch: {} \tLoss: {:.6f}\tTime({:.2f})'.format(
+            epoch, Loss_av.avg, time.time() - t))
+    
+    write_log(writer, 'Loss', Loss_av.avg, epoch)
+    write_log(writer, 'SSIM', ssim_av.avg, epoch)
+    write_log(writer, 'MSE', mse_av.avg, epoch)
+
+
     return Loss_av.avg
 
 
@@ -262,12 +270,11 @@ def sample_img(epoch):
     fig.savefig(sample_path + '%d.png' % epoch)
     plt.close()
 
-
 # --------------------------------------------------------------------------------
 #                                       Main
 # --------------------------------------------------------------------------------
 def main():
-    min_loss = torch.finfo(torch.float32).max
+    min_loss = 1000.0
     # 定义训练循环
     for epoch in range(start_epoch, total_epoch):
         train(epoch)
@@ -282,14 +289,19 @@ def main():
         min_loss = min(test_loss, min_loss)
         save_checkpoint({
             'epoch': epoch,
-            'state_dict': model.state_dict(),
+            'state_dict': model.module.state_dict(),
             'optimizer': optimizer.state_dict(),
             'min_loss': min_loss
         }, is_best, args.exp_name, save_weights_path)
 
         # # update optimizer policy
         scheduler.step(test_loss)
-    
+        
+    # 寻找没有使用的参数
+    # train(1)
+    # for name, param in model.named_parameters():
+    #     if param.grad is None:
+    #         print(name)
 
 if __name__ == "__main__":
     main()

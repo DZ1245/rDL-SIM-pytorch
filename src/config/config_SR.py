@@ -63,6 +63,7 @@ misc_arg.add_argument('--num_workers', type=int, default=5)
 # misc_arg.add_argument('--use_tensorboard', action='store_true')
 # misc_arg.add_argument('--viz', action='store_true', help='whether to save images')
 # misc_arg.add_argument('--lpips', action='store_true', help='evaluates LPIPS if set true')
+misc_arg.add_argument('--local_rank', type=int, default=-1)
 
 def get_args():
     """Parses all of the arguments above

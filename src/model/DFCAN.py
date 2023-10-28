@@ -124,7 +124,7 @@ class FCAB(nn.Module):
     def forward(self, x):
         c1 = self.conv1(x)
         g1 = self.gelu(c1)
-        c2 = self.conv1(g1)
+        c2 = self.conv2(g1)
         g2 = self.gelu(c2)
 
         fcat = self.fcat(g2)
