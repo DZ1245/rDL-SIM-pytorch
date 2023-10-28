@@ -1,5 +1,5 @@
 CUDA_VISIBLE_DEVICES='0' CUDA_DEVICE_ORDER=PCI_BUS_ID \
-python train_rDL_Denoising_Module.py --root_path /mnt/data2_16T/datasets/zhi.deng/Biology_cell/rDL_SIM/DN/ \
+python train_rDL_Denoising_Module.py --root_path /data/home/dz/rDL_SIM/DN/ \
                                         --data_folder Microtubules \
                                         --dataset Microtubules \
                                         --input_height 128 --input_width 128\
@@ -11,5 +11,8 @@ python train_rDL_Denoising_Module.py --root_path /mnt/data2_16T/datasets/zhi.den
                                         --num_gpu 1 --num_workers 5\
                                         --load_weights_flag 0 \
                                         --exp_name Test \
-                                        --resume_name Test --SR_resume_name Model_fix_ckpoint\
-
+                                        --resume_name Test --SR_resume_name Model_fix_ckpoint \
+# 2080ti
+# /data/home/dz/rDL_SIM/DN/
+# 4090
+# /mnt/data2_16T/datasets/zhi.deng/Biology_cell/rDL_SIM/DN/
