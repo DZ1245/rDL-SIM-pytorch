@@ -36,8 +36,6 @@ SR_model_name = args.SR_model_name
 DN_model_name = args.DN_model_name
 SR_resume_name = args.SR_resume_name
 
-num_gpu = args.num_gpu
-mixed_precision = args.mixed_precision
 total_epoch = args.total_epoch
 sample_epoch = args.sample_epoch
 validate_epoch = args.validate_epoch
@@ -52,14 +50,16 @@ ssim_weight = args.ssim_weight
 dataset = args.dataset
 DN_exp_name = args.exp_name
 DN_resume_name = args.resume_name
+
 input_height = args.input_height
 input_width = args.input_width
-
 scale_factor = args.scale_factor
 norm_flag = args.norm_flag
 resize_flag = args.resize_flag
+
 num_workers = args.num_workers
 log_iter = args.log_iter
+mode = 'train'
 
 # define SIM parameters
 ndirs = args.ndirs
@@ -74,14 +74,15 @@ pParam = parameters(input_height, input_width, wave_length * 1e-3, excNA, setup=
 
 
 # define and make output dir
-# 数据集位置
 data_root = root_path + dataset
 
 DN_save_weights_path = DN_save_weights_path + data_folder + "/"
 DN_exp_path = DN_save_weights_path + DN_exp_name + '/'
 
+time_now = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
+
 DN_sample_path = DN_exp_path  + "sampled/"
-DN_log_path = DN_exp_path  + "log/"
+DN_log_path = DN_exp_path  + "log/" + mode + '_' + time_now
 
 SR_save_weights_path = SR_save_weights_path + data_folder + "/"
 
@@ -123,28 +124,21 @@ SR_model.to(device)
 DN_model.to(device)
 
 # optimizer
-SR_optimizer = AdamW(SR_model.parameters(), lr=start_lr, betas=(beta1,beta2))
-SR_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    SR_optimizer, mode='min', factor=lr_decay_factor, patience=5, verbose=True)
-
 DN_optimizer = AdamW(DN_model.parameters(), lr=start_lr, betas=(beta1,beta2))
 DN_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     DN_optimizer, mode='min', factor=lr_decay_factor, patience=5, verbose=True)
 
 # load SR model
 SR_mode = 'test'
-_ = load_checkpoint(SR_save_weights_path, SR_resume_name, None, 
-                    SR_mode, SR_model, SR_optimizer, start_lr)
+_ = load_checkpoint(SR_save_weights_path, SR_resume_name, None, SR_mode, SR_model)
+
 # load DN model
 DN_mode = 'train'
 start_epoch = 0
+min_loss = 1000.0
 if load_weights_flag==1:
-    start_epoch = load_checkpoint(DN_save_weights_path, DN_resume_name, DN_exp_name, 
+    start_epoch, min_loss = load_checkpoint(DN_save_weights_path, DN_resume_name, DN_exp_name, 
                                   DN_mode, DN_model, DN_optimizer, start_lr)
-
-# Just make every model to DataParallel
-SR_model = torch.nn.DataParallel(SR_model)
-DN_model = torch.nn.DataParallel(DN_model)
 
 # MSEloss + SSIMloss
 loss_function = MSESSIMLoss(ssim_weight=ssim_weight)
@@ -587,7 +581,6 @@ def sample_img(epoch):
 
 
 def main():
-    min_loss = torch.finfo(torch.float32).max
     # 定义训练循环
     for epoch in range(start_epoch, total_epoch):
         train(epoch)
@@ -602,7 +595,7 @@ def main():
         min_loss = min(test_loss, min_loss)
         save_checkpoint({
             'epoch': epoch,
-            'state_dict': DN_model.state_dict(),
+            'state_dict': DN_model.module.state_dict(),
             'optimizer': DN_optimizer.state_dict(),
             'min_loss': min_loss
         }, is_best, args.exp_name, DN_save_weights_path)

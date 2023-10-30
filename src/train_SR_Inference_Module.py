@@ -28,7 +28,6 @@ cwd = os.getcwd()
 root_path = args.root_path
 data_folder = args.data_folder
 save_weights_path = args.save_weights_path
-save_weights_suffix = args.save_weights_suffix
 
 load_weights_flag = args.load_weights_flag
 model_name = args.model_name
@@ -56,15 +55,13 @@ norm_flag = args.norm_flag
 resize_flag = args.resize_flag
 num_workers = args.num_workers
 log_iter = args.log_iter
-mode = 'train'
 wf = 0
 
 # define and make output dir
 # 数据集位置
 data_root = root_path + dataset
 
-save_weights_path = save_weights_path + data_folder + save_weights_suffix + "/"
-save_weights_file = save_weights_path + data_folder + "_SR"
+save_weights_path = save_weights_path + data_folder "/"
 exp_path = save_weights_path + exp_name + '/'
 
 time_now = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
@@ -115,9 +112,11 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode='min', factor=lr_decay_factor, patience=10 , verbose=True, eps=1e-08)
 
 # If resume, load checkpoint: model + optimizer
+mode = 'train'
 start_epoch = 0
+min_loss = 1000.0
 if load_weights_flag==1:
-    start_epoch = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer, start_lr, local_rank)
+    start_epoch, min_loss = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer, start_lr, local_rank)
 
 model = DDP(model, device_ids=[local_rank], output_device=local_rank)
 
@@ -277,7 +276,6 @@ def sample_img(epoch):
 #                                       Main
 # --------------------------------------------------------------------------------
 def main():
-    min_loss = 1000.0
     # 定义训练循环
     for epoch in range(start_epoch, total_epoch):
         train(epoch)

@@ -13,13 +13,13 @@ def save_checkpoint(state, is_best, exp_name, save_path, filename='checkpoint.pt
     # directory = "checkpoint/%s/" % (exp_name)
     if not os.path.exists(directory):
         os.makedirs(directory)
-    
+
     filename = os.path.join(directory, filename)
     torch.save(state, filename)
     if is_best:
         shutil.copyfile(filename, directory + '/model_best.pth')
 
-def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimizer, lr, local_rank=None, fix_loaded=False):
+def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimizer=None, lr=None, local_rank=None, fix_loaded=False):
     if resume_exp is None:
         resume_exp = exp_name
     if mode == 'test' :
@@ -40,10 +40,6 @@ def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimi
         start_epoch = 0
 
     # filter out different keys or those with size mismatch
-    # model_dict = OrderedDict()
-    # for k,v in checkpoint['state_dict'].items():
-    #     model_dict[k.replace('module.','')] = v
-    
     mismatch = False
     model_dict = model.state_dict()
     ckpt_dict = {}
@@ -60,6 +56,7 @@ def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimi
             mismatch = True
     if len(model.state_dict().keys()) > len(ckpt_dict.keys()):
         mismatch = True
+    
     # Overwrite parameters to model_dict
     model_dict.update(ckpt_dict)
     # Load to model
@@ -75,10 +72,10 @@ def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimi
     #         if k in ckpt_dict.keys():
     #             print(k)
     #             param.requires_grad = False
+    
     print("loaded checkpoint %s" % load_name)
 
+    min_loss = checkpoint['min_loss']
     del checkpoint, ckpt_dict, model_dict
-    # del checkpoint, model_dict
-    # del checkpoint
-
-    return start_epoch
+    
+    return start_epoch, min_loss
