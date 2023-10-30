@@ -19,7 +19,7 @@ def save_checkpoint(state, is_best, exp_name, save_path, filename='checkpoint.pt
     if is_best:
         shutil.copyfile(filename, directory + '/model_best.pth')
 
-def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimizer, lr, local_rank, fix_loaded=False):
+def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimizer, lr, local_rank=None, fix_loaded=False):
     if resume_exp is None:
         resume_exp = exp_name
     if mode == 'test' :
@@ -30,7 +30,10 @@ def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimi
     print("loading checkpoint %s" % load_name)
     
     # DDP 增加map_location参数
-    checkpoint = torch.load(load_name, map_location='cuda:{}'.format(local_rank))
+    if local_rank is None:
+        checkpoint = torch.load(load_name)
+    else:
+        checkpoint = torch.load(load_name, map_location='cuda:{}'.format(local_rank))
 
     start_epoch = checkpoint['epoch'] + 1
     if resume_exp != exp_name:
@@ -61,8 +64,6 @@ def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimi
     model_dict.update(ckpt_dict)
     # Load to model
     model.load_state_dict(model_dict)
-
-    # model.load_state_dict(checkpoint['state_dict'])
 
     # if size mismatch, give up on loading optimizer; if resuming from other experiment, also don't load optimizer
     if (not mismatch) and (optimizer is not None) and (resume_exp is not None):
