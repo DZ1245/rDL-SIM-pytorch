@@ -16,7 +16,6 @@ cwd = os.getcwd()
 root_path = args.root_path
 data_folder = args.data_folder
 save_weights_path = args.save_weights_path
-save_weights_suffix = args.save_weights_suffix
 
 load_weights_flag = args.load_weights_flag
 model_name = args.model_name
@@ -31,11 +30,11 @@ torch.cuda.set_device(local_rank)
 device = torch.device("cuda", local_rank)
 
 # define and make output dir
-save_weights_path = save_weights_path + data_folder + save_weights_suffix + "/"
+save_weights_path = save_weights_path + data_folder + "/"
 
-raw_path = os.path.join('../Demo/Raw',data_folder)
-result_path = os.path.join('../Demo/Result',data_folder)
-gt_path = os.path.join('../Demo/GT',data_folder)
+raw_path = os.path.join('../Demo/Raw/SR',data_folder)
+result_path = os.path.join('../Demo/Result/SR',data_folder)
+gt_path = os.path.join('../Demo/GT/SR',data_folder)
 
 if not os.path.exists(result_path):
     os.makedirs(result_path)
@@ -47,7 +46,8 @@ if model_name == "DFCAN":
 model.to(device)
 
 assert load_weights_flag==1
-_ = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer=None, lr=None, local_rank=local_rank)
+_, min_loss = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer=None, lr=None, local_rank=local_rank)
+print(min_loss)
 
 model.eval()
 raw_list = os.listdir(raw_path)

@@ -16,7 +16,6 @@ dir_arg = add_argument_group('Directory')
 dir_arg.add_argument('--root_path', type=str, default='/data/home/dz/rDL_SIM/SR/')
 dir_arg.add_argument("--data_folder", type=str, default="Microtubules")
 dir_arg.add_argument("--save_weights_path", type=str, default="../trained_models/SR_Inference_Module/")
-dir_arg.add_argument("--save_weights_suffix", type=str, default="")
 
 # Dataset
 data_arg = add_argument_group('Dataset')
@@ -37,7 +36,6 @@ model_arg.add_argument("--model_name", type=str, default="DFCAN")
 
 # Training / test parameters
 learn_arg = add_argument_group('Learning')
-
 learn_arg.add_argument("--mixed_precision", type=str, default="1")
 learn_arg.add_argument("--total_epoch", type=int, default=10000)
 learn_arg.add_argument("--sample_epoch", type=int, default=100)

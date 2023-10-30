@@ -1,7 +1,7 @@
 CUDA_VISIBLE_DEVICES='7' CUDA_DEVICE_ORDER=PCI_BUS_ID \
 python -m torch.distributed.launch  --nproc_per_node 1 \
                                     predict_SR_Inference_Module.py \
-                                     --root_path /mnt/data2_16T/datasets/zhi.deng/Biology_cell/rDL_SIM/SR/ \
+                                    --root_path /mnt/data2_16T/datasets/zhi.deng/Biology_cell/rDL_SIM/SR/ \
                                     --data_folder Microtubules \
                                     --dataset Microtubules \
                                     --model_name DFCAN \

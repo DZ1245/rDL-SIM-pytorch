@@ -59,7 +59,6 @@ resize_flag = args.resize_flag
 
 num_workers = args.num_workers
 log_iter = args.log_iter
-mode = 'train'
 
 # define SIM parameters
 ndirs = args.ndirs
@@ -72,6 +71,8 @@ OTF_path_647 = args.OTF_path_647
 OTF_path_list = {488: OTF_path_488, 560: OTF_path_560, 647: OTF_path_647}
 pParam = parameters(input_height, input_width, wave_length * 1e-3, excNA, setup=0)
 
+DN_mode = 'train'
+SR_mode = 'test'
 
 # define and make output dir
 data_root = root_path + dataset
@@ -82,7 +83,7 @@ DN_exp_path = DN_save_weights_path + DN_exp_name + '/'
 time_now = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
 
 DN_sample_path = DN_exp_path  + "sampled/"
-DN_log_path = DN_exp_path  + "log/" + mode + '_' + time_now
+DN_log_path = DN_exp_path  + "log/" + DN_mode + '_' + time_now
 
 SR_save_weights_path = SR_save_weights_path + data_folder + "/"
 
@@ -97,7 +98,10 @@ if not os.path.exists(DN_log_path):
 # --------------------------------------------------------------------------------
 #                                  GPU env set
 # --------------------------------------------------------------------------------
-device = torch.device('cuda' if args.cuda else 'cpu')
+local_rank = args.local_rank
+torch.cuda.set_device(local_rank) 
+device = torch.device("cuda", local_rank)
+
 torch.backends.cudnn.enabled = True
 torch.backends.cudnn.benchmark = True
 
@@ -129,16 +133,14 @@ DN_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     DN_optimizer, mode='min', factor=lr_decay_factor, patience=5, verbose=True)
 
 # load SR model
-SR_mode = 'test'
-_ = load_checkpoint(SR_save_weights_path, SR_resume_name, None, SR_mode, SR_model)
+_ = load_checkpoint(SR_save_weights_path, SR_resume_name, None, SR_mode, SR_model, None, None, local_rank)
 
 # load DN model
-DN_mode = 'train'
 start_epoch = 0
 min_loss = 1000.0
 if load_weights_flag==1:
     start_epoch, min_loss = load_checkpoint(DN_save_weights_path, DN_resume_name, DN_exp_name, 
-                                  DN_mode, DN_model, DN_optimizer, start_lr)
+                                  DN_mode, DN_model, DN_optimizer, start_lr, local_rank)
 
 # MSEloss + SSIMloss
 loss_function = MSESSIMLoss(ssim_weight=ssim_weight)
