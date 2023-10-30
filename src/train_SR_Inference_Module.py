@@ -2,6 +2,7 @@ import os
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 import torch
 import torch.nn as nn
@@ -66,8 +67,10 @@ save_weights_path = save_weights_path + data_folder + save_weights_suffix + "/"
 save_weights_file = save_weights_path + data_folder + "_SR"
 exp_path = save_weights_path + exp_name + '/'
 
+time_now = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
+
 sample_path = exp_path  + "sampled/"
-log_path = exp_path  + "log/"
+log_path = exp_path  + "log/" + mode + '_' + time_now
 
 
 if not os.path.exists(save_weights_path):
@@ -109,7 +112,7 @@ model.to(device)
 optimizer = AdamW(model.parameters(), lr=start_lr, betas=(beta1,beta2))
 # Learning Rate Scheduler
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    optimizer, mode='min', factor=lr_decay_factor, patience=5, verbose=True)
+    optimizer, mode='min', factor=lr_decay_factor, patience=10 , verbose=True, eps=1e-08)
 
 # If resume, load checkpoint: model + optimizer
 start_epoch = 0
@@ -172,7 +175,7 @@ def train(epoch):
 
         # 其他训练步骤...
         if  batch_idx!=0 and batch_idx % log_iter == 0:
-            print('Train Epoch: {} [{}/{}]\tLoss: {:.6f}\tLr: {:.6f}\tTime({:.2f})'.format(
+            print('Train Epoch: {} [{}/{}]\tLoss: {:.8f}\tLr: {:.6f}\tTime({:.2f})'.format(
                 epoch, batch_idx, len(train_loader), Loss_av.avg, optimizer.param_groups[-1]['lr'], time.time() - t))
             t = time.time()
             Loss_av = AverageMeter()
