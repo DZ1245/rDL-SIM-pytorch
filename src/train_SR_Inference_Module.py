@@ -56,12 +56,13 @@ resize_flag = args.resize_flag
 num_workers = args.num_workers
 log_iter = args.log_iter
 wf = 0
+mode = 'train'
 
 # define and make output dir
 # 数据集位置
 data_root = root_path + dataset
 
-save_weights_path = save_weights_path + data_folder "/"
+save_weights_path = save_weights_path + data_folder +  "/"
 exp_path = save_weights_path + exp_name + '/'
 
 time_now = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
@@ -112,7 +113,6 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode='min', factor=lr_decay_factor, patience=10 , verbose=True, eps=1e-08)
 
 # If resume, load checkpoint: model + optimizer
-mode = 'train'
 start_epoch = 0
 min_loss = 1000.0
 if load_weights_flag==1:

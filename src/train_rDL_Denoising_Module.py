@@ -155,7 +155,7 @@ if dataset == 'Microtubules':
 
 # DN_dataloader数据未经过归一化处理
 train_loader = get_loader_DN('train', batch_size, data_root, True, num_workers)
-val_loader = get_loader_DN('val', batch_size, data_root, False, num_workers)
+val_loader = get_loader_DN('val', batch_size, data_root, True, num_workers)
 
 
 # --------------------------------------------------------------------------------
