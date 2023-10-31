@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
+from torch.utils.tensorboard import SummaryWriter   
 
 import config.config_DN as config_DN
 from utils.checkpoint import save_checkpoint, load_checkpoint
@@ -80,7 +81,7 @@ data_root = root_path + dataset
 DN_save_weights_path = DN_save_weights_path + data_folder + "/"
 DN_exp_path = DN_save_weights_path + DN_exp_name + '/'
 
-time_now = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
+time_now = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.datetime.now())
 
 DN_sample_path = DN_exp_path  + "sampled/"
 DN_log_path = DN_exp_path  + "log/" + DN_mode + '_' + time_now
@@ -155,6 +156,14 @@ if dataset == 'Microtubules':
 # DN_dataloader数据未经过归一化处理
 train_loader = get_loader_DN('train', batch_size, data_root, True, num_workers)
 val_loader = get_loader_DN('val', batch_size, data_root, False, num_workers)
+
+
+# --------------------------------------------------------------------------------
+#                               define log writer
+# --------------------------------------------------------------------------------
+writer = SummaryWriter(DN_log_path)
+def write_log(writer, names, logs, epoch):
+    writer.add_scalar(names, logs, epoch)
 
 
 # --------------------------------------------------------------------------------
@@ -440,6 +449,8 @@ def val(epoch):
             # # 测试代码
             # if(batch_idx > 5):
             #     break
+
+    write_log(writer, 'Loss', Loss_all.avg, epoch)
     return Loss_all.avg
 
 # --------------------------------------------------------------------------------
@@ -584,6 +595,7 @@ def sample_img(epoch):
 
 def main():
     # 定义训练循环
+    global min_loss
     for epoch in range(start_epoch, total_epoch):
         train(epoch)
         # 模型保存和评估...

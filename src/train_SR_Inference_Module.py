@@ -276,6 +276,7 @@ def sample_img(epoch):
 #                                       Main
 # --------------------------------------------------------------------------------
 def main():
+    global min_loss
     # 定义训练循环
     for epoch in range(start_epoch, total_epoch):
         train(epoch)
