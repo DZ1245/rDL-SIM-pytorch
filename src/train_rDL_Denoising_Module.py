@@ -134,7 +134,7 @@ DN_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     DN_optimizer, mode='min', factor=lr_decay_factor, patience=5, verbose=True)
 
 # load SR model
-_ = load_checkpoint(SR_save_weights_path, SR_resume_name, None, SR_mode, SR_model, None, None, local_rank)
+_, _ = load_checkpoint(SR_save_weights_path, SR_resume_name, None, SR_mode, SR_model, None, None, local_rank)
 
 # load DN model
 start_epoch = 0
@@ -187,6 +187,7 @@ yy = dy_hr * np.arange(-Ny_hr / 2, Ny_hr / 2, 1)
 
 # read OTF and PSF
 OTF, prol_OTF, PSF = read_otf(OTF_path_list[wave_length], Nx_hr, Ny_hr, dkx, dky, dkr)
+
 
 # --------------------------------------------------------------------------------
 #                                   train model

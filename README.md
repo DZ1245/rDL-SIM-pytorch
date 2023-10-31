@@ -20,3 +20,4 @@
 - ~~TF代码中的ReduceLROnPlateau，需要在看看~~
 - 直接采用pytorchi中的学习率优化参数
 - 先尝试在DN中不训练SR
+- rDL-DN的predict中num_average的作用未知
