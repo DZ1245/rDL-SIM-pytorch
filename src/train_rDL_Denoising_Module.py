@@ -603,13 +603,13 @@ def main():
 
         if epoch % sample_epoch == 0:
             sample_img(epoch)
-        
+
         # save checkpoint
         is_best = test_loss < min_loss
         min_loss = min(test_loss, min_loss)
         save_checkpoint({
             'epoch': epoch,
-            'state_dict': DN_model.module.state_dict(),
+            'state_dict': DN_model.state_dict(), # 单GPU无module
             'optimizer': DN_optimizer.state_dict(),
             'min_loss': min_loss
         }, is_best, args.exp_name, DN_save_weights_path)

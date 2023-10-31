@@ -47,7 +47,7 @@ def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimi
     for k, v in checkpoint['state_dict'].items():
         if k in model_dict:
             if model_dict[k].size() == v.size():
-                ckpt_dict[k] = v
+                ckpt_dict[k.replace('.module', '')] = v
             else:
                 print('Size mismatch while loading!   %s != %s   Skipping %s...'
                       % (str(model_dict[k].size()), str(v.size()), k))
