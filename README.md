@@ -16,8 +16,8 @@
 
 ## Questions
 - 为什么DN_model的input_channels是nphases=3，因为代码将9通道图片分为3*3进行训练，不明白原因
-- 论文中，SR模型在DN中不进行训练，但是代码中仍然存在SR的optimizer_sr
+- 论文中，SR模型在DN中不进行训练，但是代码中仍然存在SR的optimizer_sr，先在DN中不训练SR
 - ~~TF代码中的ReduceLROnPlateau，需要在看看~~
 - 直接采用pytorchi中的学习率优化参数
-- 先尝试在DN中不训练SR
 - rDL-DN的predict中num_average的作用未知
+- 原TF代码中，训练中cur_k0和modamp通过img_gt计算得到，然后在计算得到img_gen时使用了这些参数，存在问题cur_k0包含有gt信息？

@@ -30,8 +30,6 @@ input_height = args.input_height
 input_width = args.input_width
 
 load_weights_flag = args.load_weights_flag
-model_name = args.model_name
-norm_flag = args.norm_flag
 DN_exp_name = args.exp_name
 DN_resume_name = args.resume_name
 
@@ -59,6 +57,7 @@ device = torch.device("cuda", local_rank)
 
 # define and make output dir
 DN_save_weights_path = DN_save_weights_path + data_folder + "/"
+SR_save_weights_path = SR_save_weights_path + data_folder + "/"
 
 raw_path = os.path.join('../Demo/Raw/DN',data_folder)
 result_path = os.path.join('../Demo/Result/DN',data_folder)
@@ -162,11 +161,12 @@ for raw in raw_list:
     img_in = data.astype(np.float32).transpose(2, 1, 0)
     # img_in = img_in /65535.0
     img_in = prctile_norm(img_in)
+    SR_img_in = torch.Tensor(img_in)
 
     # ------------------------------------------------------------------------------
     #                               SR model predict
     # ------------------------------------------------------------------------------
-    SR_img_in = img_in.unsqueeze(0).to(device)
+    SR_img_in = SR_img_in.unsqueeze(0).to(device)
     img_SR = prctile_norm(SR_model(SR_img_in).cpu().detach().numpy())
     # cv2.resize expects (H,W,C).
     img_SR = np.squeeze(img_SR)
@@ -209,22 +209,29 @@ for raw in raw_list:
     # ------------------------------------------------------------------------------
     img_in = np.transpose(img_in, (1, 2, 0))
     img_gen = np.transpose(img_gen, (1, 2, 0))
-    input_MPE_batch = []
-    input_PFE_batch = []
-    for i in range(ndirs):
-        input_MPE_batch.append(img_gen[:, :, i * nphases:(i + 1) * nphases])
-        input_PFE_batch.append(img_in[:, :, i * nphases:(i + 1) * nphases])
-    # shape 3 128 128 3
-    input_MPE_batch = torch.Tensor(np.array(input_MPE_batch)).permute(0,3,1,2).to(device)
-    input_PFE_batch = torch.Tensor(np.array(input_PFE_batch)).permute(0,3,1,2).to(device)
+    pred = []
 
+    for d in range(ndirs):
+        Gen = img_gen[:, :, d * ndirs:(d + 1) * nphases]
+        input_img = img_in[:, :, d * ndirs:(d + 1) * nphases]
+        input_MPE = np.reshape(Gen, (1, input_height, input_width, nphases))
+        input_PFE = np.reshape(input_img, (1, input_height, input_width, nphases))
+        input_MPE = torch.Tensor(input_MPE).permute(0, 3, 1, 2).to(device)
+        input_PFE = torch.Tensor(input_PFE).permute(0, 3, 1, 2).to(device)
+        with torch.no_grad():
+            outputs = DN_model(input_PFE, input_MPE)
+        
+        pr = outputs.detach().cpu().numpy()
+
+        for pha in range(nphases):
+            pred.append(np.squeeze(pr[:, pha, :, :]))
+    pred = prctile_norm(np.array(pred))
+    
     # ------------------------------------------------------------------------------
     #                           train rDL denoising module
     # ------------------------------------------------------------------------------
-    with torch.no_grad():
-        outputs = DN_model(input_PFE_batch, input_MPE_batch)
 
-    out = outputs[0].detach().cpu().numpy()
-    out = np.uint16(out * 65535)
+    out = np.uint16(pred * 65535)
+    out = np.flip(out, axis=1)
     out_path = os.path.join(result_path,raw[:-3] + 'tif')
     tiff.imwrite(out_path, out)
