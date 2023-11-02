@@ -84,7 +84,8 @@ DN_exp_path = DN_save_weights_path + DN_exp_name + '/'
 time_now = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.datetime.now())
 
 DN_sample_path = DN_exp_path  + "sampled/"
-DN_log_path = DN_exp_path  + "log/" + DN_mode + '_' + time_now
+# DN_log_path = DN_exp_path  + "log/" + DN_mode + '_' + time_now
+DN_log_path = DN_exp_path  + "log/" + DN_mode
 
 SR_save_weights_path = SR_save_weights_path + data_folder + "/"
 
@@ -251,6 +252,7 @@ def train(epoch):
         for d in range(1, ndirs):
             data_d = img_in[d * nphases:(d + 1) * nphases, :, :]
             img_in[d * nphases:(d + 1) * nphases, :, :] = data_d * mean_th_in / np.mean(data_d)
+        
         mean_th_gt = np.mean(img_gt[:nphases, :, :])
         for d in range(ndirs):
             data_d = img_gt[d * nphases:(d + 1) * nphases, :, :]
@@ -451,7 +453,7 @@ def val(epoch):
             # if(batch_idx > 5):
             #     break
 
-    write_log(writer, 'Loss', Loss_all.avg, epoch)
+    write_log(writer, 'Val_Loss', Loss_all.avg, epoch)
     return Loss_all.avg
 
 # --------------------------------------------------------------------------------
