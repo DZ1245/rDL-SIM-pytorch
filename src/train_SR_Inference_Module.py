@@ -68,8 +68,9 @@ exp_path = save_weights_path + exp_name + '/'
 time_now = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
 
 sample_path = exp_path  + "sampled/"
-log_path = exp_path  + "log/" + mode + '_' + time_now
+# log_path = exp_path  + "log/" + mode + '_' + time_now
 
+log_path = exp_path  + "log/"
 
 if not os.path.exists(save_weights_path):
     os.makedirs(save_weights_path)
@@ -100,10 +101,14 @@ if args.cuda:
 # --------------------------------------------------------------------------------
 #                        select models optimizer and loss
 # --------------------------------------------------------------------------------
-if model_name == "DFCAN":
+if model_name == "DFCAN" :
     from model.DFCAN import DFCAN
     model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=scale_factor, input_channels=input_channels, out_channels=64)
     print("DFCAN model create")
+elif model_name == "DFCAN_SimAM" :
+    from model.DFCAN_SimAM import DFCAN_SimAM
+    model = DFCAN_SimAM(n_ResGroup=4, n_RCAB=4, scale=scale_factor, input_channels=input_channels, out_channels=64)
+    print("DFCAN_SimAM model create")
 model.to(device)
 
 

@@ -4,7 +4,7 @@ python  -m torch.distributed.launch --nproc_per_node 1 \
                                     --root_path /mnt/data2_16T/datasets/zhi.deng/Biology_cell/rDL_SIM/SR/ \
                                     --data_folder Microtubules \
                                     --dataset Microtubules \
-                                    --input_height 256 --input_width 256\
+                                    --input_height 600 --input_width 600\
                                     --SR_model_name DFCAN --DN_model_name rDL_Denoiser\
                                     --num_gpu 1 --load_weights_flag 1\
                                     --exp_name Denoise --resume_name Denoise \

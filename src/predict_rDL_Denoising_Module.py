@@ -124,10 +124,11 @@ raw_list = os.listdir(raw_path)
 for raw in raw_list:
     p = os.path.join(raw_path, raw)
     groud = os.path.join(gt_path, raw)
+    print(p)
 
     if raw[-3:]=='mrc':
         header, data = read_mrc(p)
-        input_height, input_weight, input_channels = header['nx'][0], header['ny'][0], header['nz'][0]
+        height, width, channels = header['nx'][0], header['ny'][0], header['nz'][0]
         # input= data.astype(np.float32) #256 256 9
         # inputs = data.astype(np.float32).transpose(2, 1, 0)
         # inputs = np.flip(inputs, axis=1)
@@ -136,8 +137,12 @@ for raw in raw_list:
     elif raw[-3:]=='tif':
         data = tiff.imread(p).astype(np.float32)
         # data_gt = tiff.imread(groud).astype(np.float32)
-        input_channels, input_height, input_weight = data.shape
-        inputs = data
+        channels, height, width = data.shape
+        data = np.flip(data.transpose(2, 1, 0), axis=1)
+
+    
+    if height!=input_height or width!=input_width:
+        continue
 
     # 这里默认num_average=1
     num_average = 1
