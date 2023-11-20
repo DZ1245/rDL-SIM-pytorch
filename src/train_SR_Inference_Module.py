@@ -49,6 +49,7 @@ resume_name = args.resume_name
 input_height = args.input_height
 input_width = args.input_width
 input_channels = args.input_channels
+out_channels = args.out_channels
 
 scale_factor = args.scale_factor
 norm_flag = args.norm_flag
@@ -103,11 +104,12 @@ if args.cuda:
 # --------------------------------------------------------------------------------
 if model_name == "DFCAN" :
     from model.DFCAN import DFCAN
-    model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=scale_factor, input_channels=input_channels, out_channels=64)
+    model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=scale_factor, input_channels=input_channels, mid_channels=64, out_channels=out_channels)
     print("DFCAN model create")
+
 elif model_name == "DFCAN_SimAM" :
     from model.DFCAN_SimAM import DFCAN_SimAM
-    model = DFCAN_SimAM(n_ResGroup=4, n_RCAB=4, scale=scale_factor, input_channels=input_channels, out_channels=64)
+    model = DFCAN_SimAM(n_ResGroup=4, n_RCAB=4, scale=scale_factor, input_channels=input_channels, mid_channels=64, out_channels=out_channels)
     print("DFCAN_SimAM model create")
 model.to(device)
 
@@ -136,6 +138,8 @@ loss_function = MSESSIMLoss(ssim_weight=ssim_weight)
 #                         select dataset and dataloader
 # --------------------------------------------------------------------------------
 if dataset == 'Microtubules':
+    from dataloader.Microtubules import get_loader_SR
+elif dataset == 'MT1to1':
     from dataloader.Microtubules import get_loader_SR
 
 # SR_dataloader数据经过归一化处理
@@ -167,6 +171,10 @@ def train(epoch):
         # 不使用混合精度
         inputs = batch_info['input'].to(device)
         gts = batch_info['gt'].to(device)
+        # bt h w -> bt c h w
+        if dataset=='MT1to1':
+            inputs = inputs.unsqueeze(1)
+
         # 前向传播
         outputs = model(inputs)
         loss = loss_function(outputs, gts)
@@ -208,6 +216,10 @@ def val(epoch):
         for batch_idx, batch_info in enumerate(val_loader):
             inputs = batch_info['input'].to(device)
             gts = batch_info['gt'].to(device)
+
+            # bt h w -> bt c h w
+            if dataset=='MT1to1':
+                inputs = inputs.unsqueeze(1)
             # 前向传播
             outputs = model(inputs)
             loss = loss_function(outputs, gts)
@@ -245,6 +257,11 @@ def sample_img(epoch):
     
     inputs = val_batch['input'][:3].to(device)
     gts = val_batch['gt'][:3].to(device)
+
+    # bt h w -> bt c h w
+    if dataset=='MT1to1':
+        inputs = inputs.unsqueeze(1)
+
     outputs = model(inputs)
 
     r, c = 3, 3

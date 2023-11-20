@@ -24,6 +24,7 @@ data_arg.add_argument('--dataset', type=str, default='Microtubules')
 data_arg.add_argument('--input_height', type=int, default=128)
 data_arg.add_argument('--input_width', type=int, default=128)
 data_arg.add_argument('--input_channels', type=int, default=9)
+data_arg.add_argument('--out_channels', type=int, default=1)
 
 data_arg.add_argument("--scale_factor", type=int, default=2)
 data_arg.add_argument("--norm_flag", type=int, default=1)

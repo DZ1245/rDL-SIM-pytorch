@@ -6,7 +6,6 @@ import torch.nn as nn
 # CUDA存储数据
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
 # 输入图像的二维截窗操作，并返回截窗后的图像
 # 原理没理解透 但返回数值与tf相同
 # img.shape = bs, ny, nx, ch || bs, ch, ny, nx
@@ -82,15 +81,15 @@ def global_average_pooling(input):
 # 傅里叶通道注意力(FCALayer)
 # 这里参照TF代码，需要对channel维度位置进行变换
 class FCALayer(nn.Module):
-    def __init__(self, input_channels=64, out_channels=64, reduction=16):
+    def __init__(self, mid_channels=64, reduction=16):
         super(FCALayer, self).__init__()
 
         self.relu = nn.GELU()
         self.sigmoid = nn.Sigmoid()
 
-        self.conv1 = nn.Conv2d(input_channels, out_channels, kernel_size=3, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(out_channels, out_channels // reduction, kernel_size=1, stride=1, padding=0)
-        self.conv3 = nn.Conv2d(out_channels // reduction, out_channels, kernel_size=1, stride=1, padding=0)
+        self.conv1 = nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(mid_channels, mid_channels // reduction, kernel_size=1, stride=1, padding=0)
+        self.conv3 = nn.Conv2d(mid_channels // reduction, mid_channels, kernel_size=1, stride=1, padding=0)
 
     def forward(self, x):
         # 转为TF的为维度 bt ch ny nx -> bt ny nx ch
@@ -113,13 +112,13 @@ class FCALayer(nn.Module):
 
 # 傅里叶通道注意力模块(FCAB)
 class FCAB(nn.Module):
-    def __init__(self, input_channels=64, out_channels=64):
+    def __init__(self, mid_channels=64):
         super(FCAB, self).__init__()
 
         self.gelu = nn.GELU()
-        self.conv1 = nn.Conv2d(input_channels, out_channels, kernel_size=3, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
-        self.fcat = FCALayer(out_channels, out_channels)
+        self.conv1 = nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1)
+        self.fcat = FCALayer(mid_channels, mid_channels)
 
     def forward(self, x):
         c1 = self.conv1(x)
@@ -133,10 +132,10 @@ class FCAB(nn.Module):
 
 # 残差组(ResidualGroup) 默认包含四个傅里叶通道注意力模块(FCAB)
 class ResidualGroup(nn.Module):
-    def __init__(self, n_RCAB=4, input_channels=64, out_channels=64):
+    def __init__(self, n_RCAB=4, mid_channels=64):
         super(ResidualGroup, self).__init__()
 
-        FCAB_list = [FCAB(input_channels, out_channels) for i in range(n_RCAB)]
+        FCAB_list = [FCAB(mid_channels) for i in range(n_RCAB)]
         self.FCABs = nn.Sequential(*FCAB_list)
 
     def forward(self, x):
@@ -145,18 +144,18 @@ class ResidualGroup(nn.Module):
 
 # DFCAN模型 测试可以跑通
 class DFCAN(nn.Module):
-    def __init__(self, n_ResGroup=4, n_RCAB=4, scale=2, input_channels=9, out_channels=64):
+    def __init__(self, n_ResGroup=4, n_RCAB=4, scale=2, input_channels=9, mid_channels=64, out_channels=1):
         super(DFCAN, self).__init__()
-        self.conv1 = nn.Conv2d(input_channels, out_channels, kernel_size=3, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(input_channels, mid_channels, kernel_size=3, stride=1, padding=1)
         self.gelu = nn.GELU()
 
-        ResGroup_list = [ResidualGroup(n_RCAB, out_channels, out_channels) for i in range(n_ResGroup)]
+        ResGroup_list = [ResidualGroup(n_RCAB, mid_channels) for i in range(n_ResGroup)]
         self.ResGroup = nn.Sequential(*ResGroup_list)
 
-        self.conv2 = nn.Conv2d(out_channels, out_channels * (scale ** 2), kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(mid_channels, mid_channels * (scale ** 2), kernel_size=3, stride=1, padding=1)
         self.pixel_shuffle = nn.PixelShuffle(scale)
 
-        self.conv3 = nn.Conv2d(out_channels, 1, kernel_size=3, stride=1, padding=1)
+        self.conv3 = nn.Conv2d(mid_channels, out_channels, kernel_size=3, stride=1, padding=1)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
