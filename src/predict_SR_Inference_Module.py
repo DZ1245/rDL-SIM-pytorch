@@ -23,6 +23,10 @@ norm_flag = args.norm_flag
 exp_name = args.exp_name
 resume_name = args.resume_name
 
+input_channels = args.input_channels
+out_channels = args.out_channels
+scale_factor = args.scale_factor
+
 mode = 'test'
 
 local_rank = args.local_rank
@@ -41,7 +45,7 @@ if not os.path.exists(result_path):
 
 if model_name == "DFCAN":
     from model.DFCAN import DFCAN
-    model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=2, input_channels=9, out_channels=64)
+    model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=scale_factor, input_channels=input_channels, mid_channels=64, out_channels=out_channels)
     print("DFCAN model create")
 model.to(device)
 
@@ -59,7 +63,7 @@ for raw in raw_list:
 
     if raw[-3:]=='mrc':
         header, data = read_mrc(p)
-        input_height, input_weight, input_channels = header['nx'][0], header['ny'][0], header['nz'][0]
+        input_height, input_weight, channels = header['nx'][0], header['ny'][0], header['nz'][0]
         inputs = data.astype(np.float32).transpose(2, 1, 0)
         inputs = np.flip(inputs, axis=1)
         # data_gt = torch.rand(1, 1, 256, 256)
@@ -67,10 +71,15 @@ for raw in raw_list:
     elif raw[-3:]=='tif':
         data = tiff.imread(p).astype(np.float32)
         # data_gt = tiff.imread(groud).astype(np.float32)
-        input_channels, input_height, input_weight = data.shape
+        if len(data.shape) == 3:
+            channels, input_height, input_weight = data.shape
+        else:
+            channels = 1
+            input_height, input_weight = data.shape
         inputs = data
 
-    assert input_channels==9
+    if channels != input_channels:
+        continue
 
     if norm_flag==1:
         inputs = prctile_norm(np.array(inputs))
@@ -84,6 +93,8 @@ for raw in raw_list:
     # gts = torch.Tensor(gts).unsqueeze(0).to(device)
 
     with torch.no_grad():
+        if input_channels == 1:
+            inputs = inputs.unsqueeze(1)
         outputs = model(inputs)
 
     # print(outputs.size())
@@ -91,7 +102,7 @@ for raw in raw_list:
 
     out = outputs[0].detach().cpu().numpy()
     out = np.uint16(out * 65535)
-    out_path = os.path.join(result_path,raw[:-3] + 'tif')
+    out_path = os.path.join(result_path,raw[:-4] + '_result.tif')
     tiff.imwrite(out_path, out)
 
 
