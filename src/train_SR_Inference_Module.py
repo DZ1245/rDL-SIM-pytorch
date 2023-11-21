@@ -137,10 +137,12 @@ loss_function = MSESSIMLoss(ssim_weight=ssim_weight)
 # --------------------------------------------------------------------------------
 #                         select dataset and dataloader
 # --------------------------------------------------------------------------------
-if dataset == 'Microtubules':
-    from dataloader.Microtubules import get_loader_SR
-elif dataset == 'MT1to1':
-    from dataloader.Microtubules import get_loader_SR
+# if dataset == 'Microtubules':
+#     from dataloader.Microtubules import get_loader_SR
+# elif dataset == 'MT1to1':
+#     from dataloader.Microtubules import get_loader_SR
+from dataloader.Microtubules import get_loader_SR
+
 
 # SR_dataloader数据经过归一化处理
 train_loader = get_loader_SR('train', input_height, input_width, norm_flag, resize_flag, 
@@ -172,11 +174,15 @@ def train(epoch):
         inputs = batch_info['input'].to(device)
         gts = batch_info['gt'].to(device)
         # bt h w -> bt c h w
-        if dataset=='MT1to1':
+        if len(inputs.shape) == 3:
             inputs = inputs.unsqueeze(1)
+        if len(gts.shape) == 3:
+            gts = gts.unsqueeze(1)
 
         # 前向传播
         outputs = model(inputs)
+        # print(gts.size(),outputs.size(),inputs.size())
+
         loss = loss_function(outputs, gts)
         
         optimizer.zero_grad()
@@ -218,10 +224,14 @@ def val(epoch):
             gts = batch_info['gt'].to(device)
 
             # bt h w -> bt c h w
-            if dataset=='MT1to1':
+            if len(inputs.shape) == 3:
                 inputs = inputs.unsqueeze(1)
+            if len(gts.shape) == 3:
+                gts = gts.unsqueeze(1)
+
             # 前向传播
             outputs = model(inputs)
+
             loss = loss_function(outputs, gts)
             Loss_av.update(loss.item())
 
@@ -259,8 +269,10 @@ def sample_img(epoch):
     gts = val_batch['gt'][:3].to(device)
 
     # bt h w -> bt c h w
-    if dataset=='MT1to1':
+    if len(inputs.shape) == 3:
         inputs = inputs.unsqueeze(1)
+    if len(gts.shape) == 3:
+        gts = gts.unsqueeze(1)
 
     outputs = model(inputs)
 
