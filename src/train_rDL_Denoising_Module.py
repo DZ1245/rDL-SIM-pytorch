@@ -36,10 +36,10 @@ load_weights_flag = args.load_weights_flag
 SR_model_name = args.SR_model_name
 DN_model_name = args.DN_model_name
 SR_resume_name = args.SR_resume_name
+DN_attention_mode = args.DN_attention_mode
 
 total_epoch = args.total_epoch
 sample_epoch = args.sample_epoch
-validate_epoch = args.validate_epoch
 
 batch_size = args.batch_size
 start_lr = args.start_lr
@@ -117,17 +117,17 @@ if args.cuda:
 # --------------------------------------------------------------------------------
 if SR_model_name == "DFCAN":
     from model.DFCAN import DFCAN
-    SR_model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=scale_factor, input_channels=nphases*ndirs, out_channels=64)
+    SR_model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=scale_factor, input_channels=nphases*ndirs, out_channels=1)
     print("SR:DFCAN model create")
 
 if DN_model_name == "rDL_Denoiser":
     from model.rDL_Denoise import rDL_Denoise
-    DN_model = rDL_Denoise(input_channels=nphases, output_channels=64, input_height=input_height, input_width=input_width)
+    DN_model = rDL_Denoise(input_channels=nphases, output_channels=64, input_height=input_height, input_width=input_width, attention_mode=DN_attention_mode)
     print("DN:rDL_Denoise model create")
-    # 为什么DN_model的input_channels是nphases=3
 
 SR_model.to(device)
 DN_model.to(device)
+print(SR_model)
 
 # optimizer
 DN_optimizer = AdamW(DN_model.parameters(), lr=start_lr, betas=(beta1,beta2))

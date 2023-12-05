@@ -118,7 +118,7 @@ class FCAB(nn.Module):
         self.gelu = nn.GELU()
         self.conv1 = nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1)
         self.conv2 = nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1)
-        self.fcat = FCALayer(mid_channels, mid_channels)
+        self.fcat = FCALayer(mid_channels)
 
     def forward(self, x):
         c1 = self.conv1(x)

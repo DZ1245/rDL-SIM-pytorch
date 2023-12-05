@@ -38,6 +38,7 @@ model_arg.add_argument("--load_weights_flag", type=int, default=0)
 model_arg.add_argument("--SR_model_name", type=str, default="DFCAN")
 model_arg.add_argument("--DN_model_name", type=str, default="rDL_Denoiser")
 model_arg.add_argument("--SR_resume_name", type=str, default="")
+model_arg.add_argument("--DN_attention_mode", type=str, default="SEnet")
 
 
 # Training / test parameters
@@ -45,7 +46,6 @@ learn_arg = add_argument_group('Learning')
 learn_arg.add_argument("--mixed_precision", type=str, default="1")
 learn_arg.add_argument("--total_epoch", type=int, default=10000)
 learn_arg.add_argument("--sample_epoch", type=int, default=100)
-learn_arg.add_argument("--validate_epoch", type=int, default=2)
 learn_arg.add_argument("--batch_size", type=int, default=1)
 learn_arg.add_argument("--start_lr", type=float, default=1e-4)
 learn_arg.add_argument("--lr_decay_factor", type=float, default=0.5)

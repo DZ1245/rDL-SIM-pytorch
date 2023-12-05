@@ -36,8 +36,11 @@ def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimi
         checkpoint = torch.load(load_name, map_location='cuda:{}'.format(local_rank))
 
     start_epoch = checkpoint['epoch'] + 1
+    min_loss = checkpoint['min_loss']
+
     if resume_exp != exp_name:
         start_epoch = 0
+        min_loss = 1000.0
 
     # filter out different keys or those with size mismatch
     mismatch = False
@@ -75,7 +78,7 @@ def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimi
     
     print("loaded checkpoint %s" % load_name)
 
-    min_loss = checkpoint['min_loss']
+    
     del checkpoint, ckpt_dict, model_dict
     
     return start_epoch, min_loss
