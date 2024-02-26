@@ -72,7 +72,7 @@ if not os.path.exists(result_path):
 # --------------------------------------------------------------------------------
 if SR_model_name == "DFCAN":
     from model.DFCAN import DFCAN
-    SR_model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=2, input_channels=nphases*ndirs, out_channels=64)
+    SR_model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=2, input_channels=nphases*ndirs, mid_channels=64 , out_channels=1)
     print("SR:DFCAN model create")
 
 if DN_model_name == "rDL_Denoiser":
@@ -135,7 +135,7 @@ for raw in raw_list:
         # data_gt = torch.rand(1, 1, 256, 256)
 
     elif raw[-3:]=='tif':
-        data = tiff.imread(p).astype(np.float32)
+        data = tiff.imrea(p).astype(np.float32)
         # data_gt = tiff.imread(groud).astype(np.float32)
         channels, height, width = data.shape
         data = np.flip(data.transpose(2, 1, 0), axis=1)

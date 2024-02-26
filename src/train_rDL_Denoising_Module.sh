@@ -8,7 +8,7 @@ python  -m torch.distributed.launch --nproc_per_node 1 \
                                     --SR_model_name DFCAN --DN_model_name rDL_Denoiser --DN_attention_mode CBAM \
                                     --total_epoch 10000 --sample_epoch 2 --log_iter 10 \
                                     --batch_size 1 --start_lr 1e-4 --lr_decay_factor 0.5 --ssim_weight 1e-1 \
-                                    --num_gpu 1 --num_workers 5 --load_weights_flag 0 \
+                                    --num_gpu 1 --num_workers 5 --load_weights_flag 1 \
                                     --exp_name Denoise_CBAM --resume_name Denoise_CBAM \
                                     --SR_resume_name best \
 # 2080ti
