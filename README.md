@@ -21,3 +21,6 @@
 - 直接采用pytorchi中的学习率优化参数
 - rDL-DN的predict中num_average的作用未知
 - 原TF代码中，训练中cur_k0和modamp通过img_gt计算得到，然后在计算得到img_gen时使用了这些参数，存在问题cur_k0包含有gt信息？
+
+## Log
+- 2024.02.26:创建Test分支，开始尝试修改代码及过往疑问

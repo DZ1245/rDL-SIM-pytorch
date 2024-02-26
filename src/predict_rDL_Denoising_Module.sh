@@ -1,5 +1,5 @@
-CUDA_VISIBLE_DEVICES='0,1,2' CUDA_DEVICE_ORDER=PCI_BUS_ID \
-python  -m torch.distributed.launch --nproc_per_node 1 \
+CUDA_VISIBLE_DEVICES='0,1,2,4' CUDA_DEVICE_ORDER=PCI_BUS_ID \
+python  -m torch.distributed.launch --nproc_per_node 4 \
                                     predict_rDL_Denoising_Module.py \
                                     --root_path /mnt/data2_16T/datasets/zhi.deng/Biology_cell/rDL_SIM/SR/ \
                                     --data_folder Microtubules \
