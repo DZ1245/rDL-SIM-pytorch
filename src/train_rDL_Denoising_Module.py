@@ -210,6 +210,7 @@ def train(epoch):
         img_in = np.squeeze(inputs)
         img_gt = np.squeeze(gts)
         
+        # 怀疑存在信息不对
         cur_k0, modamp = cal_modamp(np.array(img_gt).transpose((1, 2, 0)), prol_OTF, pParam)
         
         # 很怪 看不懂 TF使用while去寻找
