@@ -66,7 +66,7 @@ def fftshift(input):
     # 调整大小为 (128, 128)
     output = output.permute(0, 3, 1, 2)
 
-    output = torch.nn.functional.interpolate(output, size=(128, 128),
+    output = torch.nn.functional.interpolate(output, size=(h, w),
                                              mode='bilinear', align_corners=False)
     
     output = output.permute(0, 2, 3, 1)
@@ -142,7 +142,7 @@ class ResidualGroup(nn.Module):
         out = self.FCABs(x) + x
         return out
 
-# DFCAN模型 测试可以跑通
+# DFCAN模型
 class DFCAN(nn.Module):
     def __init__(self, n_ResGroup=4, n_RCAB=4, scale=2, input_channels=9, mid_channels=64, out_channels=1):
         super(DFCAN, self).__init__()

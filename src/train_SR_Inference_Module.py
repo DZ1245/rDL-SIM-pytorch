@@ -59,19 +59,15 @@ log_iter = args.log_iter
 wf = 0
 mode = 'train'
 
+# time_now = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
+
 # define and make output dir
 # 数据集位置
-data_root = root_path + dataset
-
-save_weights_path = save_weights_path + data_folder +  "/"
-exp_path = save_weights_path + exp_name + '/'
-
-time_now = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
-
-sample_path = exp_path  + "sampled/"
-# log_path = exp_path  + "log/" + mode + '_' + time_now
-
-log_path = exp_path  + "log/"
+data_root = os.path.join(root_path,dataset)
+save_weights_path = os.path.join(save_weights_path, data_folder)
+exp_path = os.path.join(save_weights_path, exp_name)
+sample_path = os.path.join(exp_path,"sampled")
+log_path = os.path.join(exp_path,"log")
 
 if not os.path.exists(save_weights_path):
     os.makedirs(save_weights_path)
@@ -86,12 +82,12 @@ if not os.path.exists(log_path):
 # os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 
+# DDP Setting
 local_rank = args.local_rank
 torch.cuda.set_device(local_rank)
 dist.init_process_group(backend='nccl') 
 device = torch.device("cuda", local_rank)
 
-# device = torch.device('cuda' if args.cuda else 'cpu')
 torch.backends.cudnn.enabled = True
 torch.backends.cudnn.benchmark = True
 
@@ -111,8 +107,9 @@ elif model_name == "DFCAN_SimAM" :
     from model.DFCAN_SimAM import DFCAN_SimAM
     model = DFCAN_SimAM(n_ResGroup=4, n_RCAB=4, scale=scale_factor, input_channels=input_channels, mid_channels=64, out_channels=out_channels)
     print("DFCAN_SimAM model create")
-model.to(device)
 
+model.to(device)
+model = DDP(model, device_ids=[local_rank], output_device=local_rank)
 
 optimizer = AdamW(model.parameters(), lr=start_lr, betas=(beta1,beta2))
 # Learning Rate Scheduler
@@ -125,14 +122,8 @@ min_loss = 1000.0
 if load_weights_flag==1:
     start_epoch, min_loss = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer, start_lr, local_rank)
 
-model = DDP(model, device_ids=[local_rank], output_device=local_rank)
-
-# Just make every model to DataParallel
-# model = torch.nn.DataParallel(model)
-
 # MSEloss + SSIMloss
 loss_function = MSESSIMLoss(ssim_weight=ssim_weight)
-
 
 # --------------------------------------------------------------------------------
 #                         select dataset and dataloader
@@ -168,9 +159,7 @@ def train(epoch):
     Loss_av = AverageMeter()
 
     t = time.time()
-    # 训练中使用autocast进行混合精度计算
     for batch_idx, batch_info in enumerate(train_loader):
-        # 不使用混合精度
         inputs = batch_info['input'].to(device)
         gts = batch_info['gt'].to(device)
         # bt h w -> bt c h w
@@ -181,7 +170,6 @@ def train(epoch):
 
         # 前向传播
         outputs = model(inputs)
-        # print(gts.size(),outputs.size(),inputs.size())
 
         loss = loss_function(outputs, gts)
         
@@ -198,7 +186,7 @@ def train(epoch):
             t = time.time()
             Loss_av = AverageMeter()
 
-        # # 测试代码
+        # 测试代码
         # if(batch_idx > 5):
         #     break
 
@@ -238,7 +226,7 @@ def val(epoch):
             mse_av.update(mse_loss(outputs, gts))
             ssim_av.update(ssim(outputs, gts))
             
-            # # 测试代码
+            # 测试代码
             # if(batch_idx > 5):
             #     break
 
