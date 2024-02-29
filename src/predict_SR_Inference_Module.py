@@ -34,7 +34,7 @@ torch.cuda.set_device(local_rank)
 device = torch.device("cuda", local_rank)
 
 # define and make output dir
-save_weights_path = save_weights_path + data_folder + "/"
+save_weights_path = os.path.join(save_weights_path, data_folder)
 
 raw_path = os.path.join('../Demo/Raw/SR',data_folder)
 result_path = os.path.join('../Demo/Result/SR',data_folder)
