@@ -114,7 +114,7 @@ model = DDP(model, device_ids=[local_rank], output_device=local_rank)
 optimizer = AdamW(model.parameters(), lr=start_lr, betas=(beta1,beta2))
 # Learning Rate Scheduler
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    optimizer, mode='min', factor=lr_decay_factor, patience=10 , verbose=True, eps=1e-08)
+    optimizer, mode='min', factor=lr_decay_factor, patience=10, verbose=True, eps=1e-08)
 
 # If resume, load checkpoint: model + optimizer
 start_epoch = 0
@@ -128,12 +128,8 @@ loss_function = MSESSIMLoss(ssim_weight=ssim_weight)
 # --------------------------------------------------------------------------------
 #                         select dataset and dataloader
 # --------------------------------------------------------------------------------
-# if dataset == 'Microtubules':
-#     from dataloader.Microtubules import get_loader_SR
-# elif dataset == 'MT1to1':
-#     from dataloader.Microtubules import get_loader_SR
-from dataloader.Microtubules import get_loader_SR
-
+if dataset == 'Microtubules':
+    from dataloader.Microtubules import get_loader_SR
 
 # SR_dataloader数据经过归一化处理
 train_loader = get_loader_SR('train', input_height, input_width, norm_flag, resize_flag, 
@@ -162,6 +158,7 @@ def train(epoch):
     for batch_idx, batch_info in enumerate(train_loader):
         inputs = batch_info['input'].to(device)
         gts = batch_info['gt'].to(device)
+
         # bt h w -> bt c h w
         if len(inputs.shape) == 3:
             inputs = inputs.unsqueeze(1)
@@ -181,7 +178,7 @@ def train(epoch):
 
         # 其他训练步骤...
         if  batch_idx!=0 and batch_idx % log_iter == 0:
-            print('Train Epoch: {} [{}/{}]\tLoss: {:.8f}\tLr: {:.6f}\tTime({:.2f})'.format(
+            print('Train Epoch: {} [{}/{}]\tLoss: {:.8f}\tLr: {:.8f}\tTime({:.2f})'.format(
                 epoch, batch_idx, len(train_loader), Loss_av.avg, optimizer.param_groups[-1]['lr'], time.time() - t))
             t = time.time()
             Loss_av = AverageMeter()
@@ -206,7 +203,6 @@ def val(epoch):
 
     t = time.time()
     with torch.no_grad():
-        # 训练中使用autocast进行混合精度计算
         for batch_idx, batch_info in enumerate(val_loader):
             inputs = batch_info['input'].to(device)
             gts = batch_info['gt'].to(device)
@@ -230,8 +226,8 @@ def val(epoch):
             # if(batch_idx > 5):
             #     break
 
-    print('Val Epoch: {} \tLoss: {:.6f}\tTime({:.2f})'.format(
-            epoch, Loss_av.avg, time.time() - t))
+    print('Val Epoch: {} \tLoss: {:.6f} \tSSIM: {:.6f} \t MSE: {:.6f} \tTime({:.2f})'.format(
+            epoch, Loss_av.avg, ssim_av.avg, mse_av.avg, time.time() - t))
     
     write_log(writer, 'Loss', Loss_av.avg, epoch)
     write_log(writer, 'SSIM', ssim_av.avg, epoch)
@@ -302,7 +298,8 @@ def main():
     # 定义训练循环
     for epoch in range(start_epoch, total_epoch):
         train(epoch)
-        # 模型保存和评估...
+
+        # 模型保存和评估
         test_loss = val(epoch)
 
         if epoch % sample_epoch == 0:
@@ -318,7 +315,7 @@ def main():
             'min_loss': min_loss
         }, is_best, args.exp_name, save_weights_path)
 
-        # # update optimizer policy
+        # update optimizer policy
         scheduler.step(test_loss)
         
     # 寻找没有使用的参数

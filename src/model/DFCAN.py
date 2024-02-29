@@ -63,13 +63,13 @@ def fftshift(input):
 
     output = torch.cat([torch.cat([fs11, fs21], dim=1),
                         torch.cat([fs12, fs22], dim=1)], dim=2)
+    
     # 调整大小为 (128, 128)
     output = output.permute(0, 3, 1, 2)
-
     output = torch.nn.functional.interpolate(output, size=(h, w),
                                              mode='bilinear', align_corners=False)
-    
     output = output.permute(0, 2, 3, 1)
+    
     return output
 
 # 全局平均池化 按照PT维度 bt ch ny nx

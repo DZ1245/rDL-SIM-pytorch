@@ -61,7 +61,6 @@ class Microtubules_SR(Dataset):
                 if self.resize_flag == 1:
                     img = cv2.resize(img, (self.height * self.scale, self.width * self.scale))
                 curBatch.append(img)
-            #gt = imageio.imread(imgpaths_gt).astype(np.float)
             gt = tiff.imread(imgpaths_gt).astype(np.float32)
             
         # 增加归一化判断
