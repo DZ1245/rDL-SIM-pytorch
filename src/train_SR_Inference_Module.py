@@ -109,7 +109,7 @@ elif model_name == "DFCAN_SimAM" :
     print("DFCAN_SimAM model create")
 
 model.to(device)
-model = DDP(model, device_ids=[local_rank], output_device=local_rank)
+
 
 optimizer = AdamW(model.parameters(), lr=start_lr, betas=(beta1,beta2))
 # Learning Rate Scheduler
@@ -121,6 +121,8 @@ start_epoch = 0
 min_loss = 1000.0
 if load_weights_flag==1:
     start_epoch, min_loss = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer, start_lr, local_rank)
+
+model = DDP(model, device_ids=[local_rank], output_device=local_rank)
 
 # MSEloss + SSIMloss
 loss_function = MSESSIMLoss(ssim_weight=ssim_weight)
@@ -295,6 +297,11 @@ def sample_img(epoch):
 # --------------------------------------------------------------------------------
 def main():
     global min_loss
+    
+    # 如果是继续训练，先看一下效果
+    # if load_weights_flag==1:
+    #     _ = val(start_epoch-1)
+
     # 定义训练循环
     for epoch in range(start_epoch, total_epoch):
         train(epoch)

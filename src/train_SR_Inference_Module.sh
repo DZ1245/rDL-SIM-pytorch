@@ -1,5 +1,5 @@
-CUDA_VISIBLE_DEVICES='0,1,2,3' CUDA_DEVICE_ORDER=PCI_BUS_ID \
-python -m torch.distributed.launch  --nproc_per_node 4 \
+CUDA_VISIBLE_DEVICES='0,1,2,3,4,5,6,7' CUDA_DEVICE_ORDER=PCI_BUS_ID \
+python -m torch.distributed.launch  --nproc_per_node 8 \
                                     train_SR_Inference_Module.py \
                                     --root_path /mnt/data2_16T/datasets/zhi.deng/Biology_cell/rDL_SIM_data/rDL_BioSR/rDL_SIM_separate_v1/SR/ \
                                     --data_folder Microtubules \
@@ -11,7 +11,7 @@ python -m torch.distributed.launch  --nproc_per_node 4 \
                                     --log_iter 10 --num_workers 30 \
                                     --batch_size 28 --start_lr 1e-4 --lr_decay_factor 0.5 \
                                     --ssim_weight 1e-1 \
-                                    --load_weights_flag 0 \
+                                    --load_weights_flag 1 \
                                     --exp_name BioSR_separatev2 \
                                     --resume_name BioSR_separatev2 \
                                     --save_weights_path "../trained_models/SR_Inference_Module/" \
