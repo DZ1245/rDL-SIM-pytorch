@@ -114,7 +114,7 @@ model = DDP(model, device_ids=[local_rank], output_device=local_rank)
 optimizer = AdamW(model.parameters(), lr=start_lr, betas=(beta1,beta2))
 # Learning Rate Scheduler
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    optimizer, mode='min', factor=lr_decay_factor, patience=10, verbose=True, eps=1e-08)
+    optimizer, mode='min', factor=lr_decay_factor, patience=4, verbose=True, eps=1e-08)
 
 # If resume, load checkpoint: model + optimizer
 start_epoch = 0
@@ -286,8 +286,8 @@ def sample_img(epoch):
         for col, image in enumerate([img_show, output_show, gt_show]):
             axs[row, col].imshow(np.squeeze(image[row]))
             axs[row, col].axis('off')
-        cnt += 1
-    fig.savefig(sample_path + '%d.png' % epoch)
+        cnt += 1 
+    fig.savefig(os.path.join(sample_path,'%d.png' % epoch))
     plt.close()
 
 # --------------------------------------------------------------------------------
