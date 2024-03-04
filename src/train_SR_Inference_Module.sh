@@ -1,5 +1,5 @@
-CUDA_VISIBLE_DEVICES='0,1,2,3,4,5,6,7' CUDA_DEVICE_ORDER=PCI_BUS_ID \
-python -m torch.distributed.launch  --nproc_per_node 8 \
+CUDA_VISIBLE_DEVICES='0,1,2,3,4,5' CUDA_DEVICE_ORDER=PCI_BUS_ID \
+python -m torch.distributed.launch  --nproc_per_node 6 \
                                     train_SR_Inference_Module.py \
                                     --root_path /mnt/data2_16T/datasets/zhi.deng/Biology_cell/rDL_SIM_data/rDL_BioSR/rDL_SIM_separate_v1/SR/ \
                                     --data_folder Microtubules \

@@ -25,8 +25,8 @@ def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimi
     if mode == 'test' :
         load_name = os.path.join(save_weights_path, resume_exp, 'model_best.pth')
     else:
-        load_name = os.path.join(save_weights_path, resume_exp, 'model_best.pth')
-        # load_name = os.path.join(save_weights_path, resume_exp, 'checkpoint.pth')
+        # load_name = os.path.join(save_weights_path, resume_exp, 'model_best.pth')
+        load_name = os.path.join(save_weights_path, resume_exp, 'checkpoint.pth')
     print("loading checkpoint %s" % load_name)
     
     # DDP 增加map_location参数
