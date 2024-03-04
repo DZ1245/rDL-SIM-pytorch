@@ -38,7 +38,7 @@
 
 - 2024.03.01:引入SwinIR用于SR;引入HAT模型用于SR；**SwinIR中PatchEmbed没有任何作用？与SwinTransformer不同**；
 
-- 2024.03.04:改变rDL_tf版的光学来源，从gt改为input，**已训练SR，尚未训练DN**；
+- 2024.03.04:改变rDL_tf版的光学来源，从gt改为input，**已训练SR，尚未训练DN**；继续研究SwinIR论文和代码；
 
 - 2024.03.05:
 
