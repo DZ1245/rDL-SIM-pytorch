@@ -36,9 +36,7 @@
 
 - 2024.02.29:BioSR数据局部比较中，使用我们数据训练的tf模型与GT的SSIM在0.64，与pt模型SSIM在0.9左右（Cell01-Level01-Crop7），总结与官方权重差距产生在数据集大小及挑选上（官方使用总计3w张进行挑选的，我们划分了5k张左右且不进行挑选）；BioSR_separatev2，DFCANmodel简单修改；新建Moiré_Generate，提前生成仿真图片存放，加快训练速度（**搁置，光学信息存疑**），tf版本中训练光照从GT中获得，Pre中光照由训练数据的平均获得；
 
-- 2024.03.01:引入SwinIR用于SR;引入HAT模型用于SR；**SwinIR中PatchEmbed没有任何作用？与SwinTransformer不同**；
-
-- 2024.03.04:改变rDL_tf版的光学来源，从gt改为input，**已训练SR，尚未训练DN**；继续研究SwinIR论文和代码；
+- 2024.03.04:改变rDL_tf版的光学来源，从gt改为input，**已训练新数据集的SR，尚未训练DN**；
 
 - 2024.03.05:
 
