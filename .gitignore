@@ -1,3 +1,5 @@
 /trained_models
 /Demo
 *.ipynb
+__pycache__
+test.*

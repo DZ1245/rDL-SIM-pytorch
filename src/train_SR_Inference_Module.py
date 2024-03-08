@@ -1,5 +1,6 @@
 import os
 import time
+import logging
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
@@ -9,7 +10,7 @@ import torch.nn as nn
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from torch.utils.tensorboard import SummaryWriter   
+# from torch.utils.tensorboard import SummaryWriter   
 from torch.optim import AdamW
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 
@@ -79,8 +80,6 @@ if not os.path.exists(log_path):
 # --------------------------------------------------------------------------------
 #                                  GPU env set
 # --------------------------------------------------------------------------------
-# os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
-# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 
 # DDP Setting
 local_rank = args.local_rank
@@ -143,18 +142,33 @@ val_loader = get_loader_SR('val', input_height, input_width, norm_flag, resize_f
 # --------------------------------------------------------------------------------
 #                               define log writer
 # --------------------------------------------------------------------------------
-writer = SummaryWriter(log_path)
-def write_log(writer, names, logs, epoch):
-    writer.add_scalar(names, logs, epoch)
+# writer = SummaryWriter(log_path)
+# def write_log(writer, names, logs, epoch):
+#     writer.add_scalar(names, logs, epoch)
 
+# logging
+logging.basicConfig(level=logging.INFO)
+log_file_path = os.path.join(log_path, "log.txt")
 
+# 创建一个文件处理器，用于写入日志到文件
+file_handler = logging.FileHandler(log_file_path)
+file_handler.setLevel(logging.INFO)
+
+# 设置日志格式
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+
+# 将文件处理器和流处理器添加到日志记录器
+logging.getLogger().addHandler(file_handler)
+
+logging.info(args)
 # --------------------------------------------------------------------------------
 #                                   train model
 # --------------------------------------------------------------------------------
 def train(epoch):
     model.train()
     loss_function.train()
-    Loss_av = AverageMeter()
+    # Loss_av = AverageMeter()
 
     t = time.time()
     for batch_idx, batch_info in enumerate(train_loader):
@@ -176,14 +190,19 @@ def train(epoch):
         loss.backward()
         optimizer.step()
 
-        Loss_av.update(loss.item())
+        # Loss_av.update(loss.item())
 
         # 其他训练步骤...
-        if  batch_idx!=0 and batch_idx % log_iter == 0:
-            print('Train Epoch: {} [{}/{}]\tLoss: {:.8f}\tLr: {:.8f}\tTime({:.2f})'.format(
-                epoch, batch_idx, len(train_loader), Loss_av.avg, optimizer.param_groups[-1]['lr'], time.time() - t))
-            t = time.time()
-            Loss_av = AverageMeter()
+        if  local_rank==0 and batch_idx!=0 and batch_idx % log_iter == 0:
+            logging.info('Train Epoch: {} [{}/{}]\tLoss: {:.8f}\tLr: {:.8f}'
+                         .format(epoch, batch_idx, len(train_loader), loss.item(), 
+                                 optimizer.param_groups[-1]['lr'])
+                                 )
+        
+            # print('Train Epoch: {} [{}/{}]\tLoss: {:.8f}\tLr: {:.8f}\tTime({:.2f})'.format(
+            #     epoch, batch_idx, len(train_loader), Loss_av.avg, optimizer.param_groups[-1]['lr'], time.time() - t))
+            # t = time.time()
+            # Loss_av = AverageMeter()
 
         # 测试代码
         # if(batch_idx > 5):
@@ -199,11 +218,11 @@ def val(epoch):
     mse_loss = nn.MSELoss()
     ssim = SSIM() 
 
-    Loss_av = AverageMeter()
+    # Loss_av = AverageMeter()
     mse_av = AverageMeter()
     ssim_av = AverageMeter()
 
-    t = time.time()
+    # t = time.time()
     with torch.no_grad():
         for batch_idx, batch_info in enumerate(val_loader):
             inputs = batch_info['input'].to(device)
@@ -219,7 +238,7 @@ def val(epoch):
             outputs = model(inputs)
 
             loss = loss_function(outputs, gts)
-            Loss_av.update(loss.item())
+            # Loss_av.update(loss.item())
 
             mse_av.update(mse_loss(outputs, gts))
             ssim_av.update(ssim(outputs, gts))
@@ -228,15 +247,18 @@ def val(epoch):
             # if(batch_idx > 5):
             #     break
 
-    print('Val Epoch: {} \tLoss: {:.6f} \tSSIM: {:.6f} \t MSE: {:.6f} \tTime({:.2f})'.format(
-            epoch, Loss_av.avg, ssim_av.avg, mse_av.avg, time.time() - t))
+    if local_rank==0:
+        logging.info('Val Epoch: {}\tLoss: {:.8f} \tSSIM: {:.8f} \t MSE: {:.8f}'
+                     .format(epoch, loss.item(), ssim_av.avg, mse_av.avg)
+                     )
+    # print('Val Epoch: {} \tLoss: {:.6f} \tSSIM: {:.6f} \t MSE: {:.6f} \tTime({:.2f})'.format(
+    #         epoch, Loss_av.avg, ssim_av.avg, mse_av.avg, time.time() - t))
     
-    write_log(writer, 'Loss', Loss_av.avg, epoch)
-    write_log(writer, 'SSIM', ssim_av.avg, epoch)
-    write_log(writer, 'MSE', mse_av.avg, epoch)
+    # write_log(writer, 'Loss', Loss_av.avg, epoch)
+    # write_log(writer, 'SSIM', ssim_av.avg, epoch)
+    # write_log(writer, 'MSE', mse_av.avg, epoch)
 
-
-    return Loss_av.avg
+    return loss.item()
 
 
 # --------------------------------------------------------------------------------
@@ -250,7 +272,6 @@ def sample_img(epoch):
     data_iterator = iter(val_loader)
     val_batch = next(data_iterator)
 
-    
     inputs = val_batch['input'][:3].to(device)
     gts = val_batch['gt'][:3].to(device)
 

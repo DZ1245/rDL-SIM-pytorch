@@ -10,7 +10,6 @@ def update_lr(optimizer, lr):
 def save_checkpoint(state, is_best, exp_name, save_path, filename='checkpoint.pth'):
     """Saves checkpoint to disk"""
     directory = os.path.join(save_path, exp_name)
-    # directory = "checkpoint/%s/" % (exp_name)
     if not os.path.exists(directory):
         os.makedirs(directory)
 

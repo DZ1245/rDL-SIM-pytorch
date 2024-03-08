@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from skimage.metrics import mean_squared_error as compare_mse
 from skimage.metrics import normalized_root_mse as compare_nrmse
