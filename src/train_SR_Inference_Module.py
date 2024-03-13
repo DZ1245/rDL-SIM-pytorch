@@ -15,7 +15,7 @@ from torch.optim import AdamW
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 
 import config.config_SR as config_SR
-from utils.loss import MSESSIMLoss, AverageMeter
+from utils.loss import MSE_SSIMLoss, AverageMeter
 from utils.pytorch_ssim import SSIM
 from utils.checkpoint import save_checkpoint, load_checkpoint
 
@@ -99,12 +99,16 @@ if args.cuda:
 # --------------------------------------------------------------------------------
 if model_name == "DFCAN" :
     from model.DFCAN import DFCAN
-    model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=scale_factor, input_channels=input_channels, mid_channels=64, out_channels=out_channels)
+    model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=scale_factor, 
+                  input_channels=input_channels, mid_channels=64, 
+                  out_channels=out_channels)
     print("DFCAN model create")
 
 elif model_name == "DFCAN_SimAM" :
     from model.DFCAN_SimAM import DFCAN_SimAM
-    model = DFCAN_SimAM(n_ResGroup=4, n_RCAB=4, scale=scale_factor, input_channels=input_channels, mid_channels=64, out_channels=out_channels)
+    model = DFCAN_SimAM(n_ResGroup=4, n_RCAB=4, scale=scale_factor, 
+                        input_channels=input_channels, mid_channels=64, 
+                        out_channels=out_channels)
     print("DFCAN_SimAM model create")
 
 model.to(device)
@@ -113,13 +117,16 @@ model.to(device)
 optimizer = AdamW(model.parameters(), lr=start_lr, betas=(beta1,beta2))
 # Learning Rate Scheduler
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    optimizer, mode='min', factor=lr_decay_factor, patience=4, verbose=True, eps=1e-08)
+    optimizer, mode='min', factor=lr_decay_factor, 
+    patience=4, verbose=True, eps=1e-08)
 
 # If resume, load checkpoint: model + optimizer
 start_epoch = 0
 min_loss = 1000.0
 if load_weights_flag==1:
-    start_epoch, min_loss = load_checkpoint(save_weights_path, resume_name, exp_name, mode, model, optimizer, start_lr, local_rank)
+    start_epoch, min_loss = load_checkpoint(save_weights_path, resume_name, 
+                                            exp_name, mode, model, optimizer, 
+                                            start_lr, local_rank)
 
 model = DDP(model, device_ids=[local_rank], output_device=local_rank)
 
@@ -135,6 +142,7 @@ if dataset == 'Microtubules':
 # SR_dataloader数据经过归一化处理
 train_loader = get_loader_SR('train', input_height, input_width, norm_flag, resize_flag, 
                           scale_factor, wf, batch_size, data_root,True,num_workers)
+
 val_loader = get_loader_SR('val', input_height, input_width, norm_flag, resize_flag, 
                         scale_factor, wf, batch_size, data_root,True,num_workers)
 
@@ -160,8 +168,9 @@ file_handler.setFormatter(formatter)
 
 # 将文件处理器和流处理器添加到日志记录器
 logging.getLogger().addHandler(file_handler)
-
-logging.info(args)
+if local_rank==0:
+    logging.info(args)
+    
 # --------------------------------------------------------------------------------
 #                                   train model
 # --------------------------------------------------------------------------------

@@ -18,9 +18,9 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
-class MSESSIMLoss(nn.Module):
+class MSE_SSIMLoss(nn.Module):
     def __init__(self,mse_weight=1.0,ssim_weight=1e-2):
-        super(MSESSIMLoss, self).__init__()
+        super(MSE_SSIMLoss, self).__init__()
         self.mse_weight = mse_weight
         self.ssim_weight = ssim_weight
 

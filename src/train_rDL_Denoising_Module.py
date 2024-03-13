@@ -1,19 +1,19 @@
 import os
+import cv2
 import datetime
 import numpy as np
 import numpy.fft as F
-import cv2
 import matplotlib.pyplot as plt
 
 
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
-from torch.utils.tensorboard import SummaryWriter   
+# from torch.utils.tensorboard import SummaryWriter   
 
 import config.config_DN as config_DN
 from utils.checkpoint import save_checkpoint, load_checkpoint
-from utils.loss import MSESSIMLoss, AverageMeter
+from utils.loss import MSE_SSIMLoss, AverageMeter
 from utils.utils import prctile_norm, cal_comp
 from utils.pytorch_ssim import SSIM
 
@@ -76,18 +76,14 @@ DN_mode = 'train'
 SR_mode = 'test'
 
 # define and make output dir
-data_root = root_path + dataset
+data_root = os.path.join(root_path, dataset)
 
-DN_save_weights_path = DN_save_weights_path + data_folder + "/"
-DN_exp_path = DN_save_weights_path + DN_exp_name + '/'
+DN_save_weights_path = os.path.join(DN_save_weights_path, data_folder)
+DN_exp_path = os.path.join(DN_save_weights_path, DN_exp_name)
+DN_sample_path = os.path.join(DN_exp_path, "sampled")
+DN_log_path  = os.path.join(DN_exp_path, "log")
 
-time_now = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.datetime.now())
-
-DN_sample_path = DN_exp_path  + "sampled/"
-# DN_log_path = DN_exp_path  + "log/" + DN_mode + '_' + time_now
-DN_log_path = DN_exp_path  + "log/" + DN_mode
-
-SR_save_weights_path = SR_save_weights_path + data_folder + "/"
+SR_save_weights_path  = os.path.join(SR_save_weights_path, data_folder)
 
 if not os.path.exists(DN_save_weights_path):
     os.makedirs(DN_save_weights_path)
@@ -125,14 +121,10 @@ if DN_model_name == "rDL_Denoiser":
     DN_model = rDL_Denoise(input_channels=nphases, output_channels=64, input_height=input_height, input_width=input_width, attention_mode=DN_attention_mode)
     print("DN:rDL_Denoise model create")
 
-SR_model.to(device)
-DN_model.to(device)
-print(SR_model)
-
 # optimizer
 DN_optimizer = AdamW(DN_model.parameters(), lr=start_lr, betas=(beta1,beta2))
 DN_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    DN_optimizer, mode='min', factor=lr_decay_factor, patience=5, verbose=True)
+    DN_optimizer, mode='min', factor=lr_decay_factor, patience=4, verbose=True)
 
 # load SR model
 _, _ = load_checkpoint(SR_save_weights_path, SR_resume_name, None, SR_mode, SR_model, None, None, local_rank)
@@ -145,9 +137,10 @@ if load_weights_flag==1:
                                   DN_mode, DN_model, DN_optimizer, start_lr, local_rank)
 
 # MSEloss + SSIMloss
-loss_function = MSESSIMLoss(ssim_weight=ssim_weight)
+loss_function = MSE_SSIMLoss(ssim_weight=ssim_weight)
 
-
+SR_model.to(device)
+DN_model.to(device)
 # --------------------------------------------------------------------------------
 #                         select dataset and dataloader
 # --------------------------------------------------------------------------------
@@ -162,9 +155,9 @@ val_loader = get_loader_DN('val', batch_size, data_root, True, num_workers)
 # --------------------------------------------------------------------------------
 #                               define log writer
 # --------------------------------------------------------------------------------
-writer = SummaryWriter(DN_log_path)
-def write_log(writer, names, logs, epoch):
-    writer.add_scalar(names, logs, epoch)
+# writer = SummaryWriter(DN_log_path)
+# def write_log(writer, names, logs, epoch):
+#     writer.add_scalar(names, logs, epoch)
 
 
 # --------------------------------------------------------------------------------
@@ -198,7 +191,6 @@ def train(epoch):
     SR_model.eval()
     DN_model.train()
     loss_function.train()
-    Loss_av = AverageMeter()
 
     start_time = datetime.datetime.now()
     for batch_idx, batch_info in enumerate(train_loader):
@@ -309,18 +301,15 @@ def train(epoch):
         loss.backward()
         DN_optimizer.step()
 
-        Loss_av.update(loss.item())
-
         modamp_abs = np.mean(np.abs(modamp))
         elapsed_time = datetime.datetime.now() - start_time
         # 其他训练步骤...
         if batch_idx % log_iter == 0:
             print('Train Epoch: {} [{}/{}]\tLoss: {:.6f}\tModamp: {:.6f}\tLr: {:.6f}\tTime({})'.format(
-                epoch, batch_idx, len(train_loader), Loss_av.avg, modamp_abs, 
+                epoch, batch_idx, len(train_loader), loss.item(), modamp_abs, 
                 DN_optimizer.param_groups[-1]['lr'], elapsed_time))
             start_time = datetime.datetime.now()
-            Loss_av = AverageMeter()
-    
+
         # # 测试代码
         # if(batch_idx > 5):
         #     break

@@ -11,7 +11,7 @@ python -m torch.distributed.launch  --nproc_per_node 2 \
                                     --log_iter 100 --num_workers 30 \
                                     --batch_size 28 --start_lr 1e-4 --lr_decay_factor 0.5 \
                                     --ssim_weight 1e-1 \
-                                    --load_weights_flag 0 \
+                                    --load_weights_flag 1 \
                                     --exp_name BioSR_alldata \
                                     --resume_name BioSR_alldata \
                                     --save_weights_path "../trained_models/SR_Inference_Module/" \

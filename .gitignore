@@ -2,4 +2,4 @@
 /Demo
 *.ipynb
 __pycache__
-test.*
+*test.*

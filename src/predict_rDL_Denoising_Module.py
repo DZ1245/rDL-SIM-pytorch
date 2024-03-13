@@ -80,8 +80,6 @@ if DN_model_name == "rDL_Denoiser":
     DN_model = rDL_Denoise(input_channels=nphases, output_channels=64, input_height=input_height, input_width=input_width)
     print("DN:rDL_Denoise model create")
 
-SR_model.to(device)
-DN_model.to(device)
 
 # load model
 assert load_weights_flag==1
@@ -90,6 +88,8 @@ _, _ = load_checkpoint(SR_save_weights_path, SR_resume_name, None,
 _, _ = load_checkpoint(DN_save_weights_path, DN_resume_name, DN_exp_name, 
                         DN_mode, DN_model, None, None, local_rank)
 
+SR_model.to(device)
+DN_model.to(device)
 
 # --------------------------------------------------------------------------------
 #                         predefine OTF and other parameters
@@ -135,7 +135,7 @@ for raw in raw_list:
         # data_gt = torch.rand(1, 1, 256, 256)
 
     elif raw[-3:]=='tif':
-        data = tiff.imrea(p).astype(np.float32)
+        data = tiff.imread(p).astype(np.float32)
         # data_gt = tiff.imread(groud).astype(np.float32)
         channels, height, width = data.shape
         data = np.flip(data.transpose(2, 1, 0), axis=1)
@@ -238,5 +238,6 @@ for raw in raw_list:
 
     out = np.uint16(pred * 65535)
     out = np.flip(out, axis=1)
-    out_path = os.path.join(result_path,raw[:-3] + 'tif')
+    out_path = os.path.join(result_path,raw[:-4] + '_result.tif')
+    print(out_path)
     tiff.imwrite(out_path, out)

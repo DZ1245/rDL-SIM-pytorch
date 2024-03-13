@@ -68,15 +68,8 @@ def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimi
     if (not mismatch) and (optimizer is not None) and (resume_exp is not None):
         optimizer.load_state_dict(checkpoint['optimizer'])
         update_lr(optimizer, lr)
-
-    # if fix_loaded:
-    #     for k, param in model.named_parameters():
-    #         if k in ckpt_dict.keys():
-    #             print(k)
-    #             param.requires_grad = False
     
     print("loaded checkpoint %s" % load_name)
-
     
     del checkpoint, ckpt_dict, model_dict
     
