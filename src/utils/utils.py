@@ -30,9 +30,18 @@ def cal_comp(gt, pr, mses=None, nrmses=None, psnrs=None, ssims=None):
     else:
         n = np.size(gt, 0)
 
-    for i in range(n):
-        mses.append(compare_mse(prctile_norm(np.squeeze(gt[i])), prctile_norm(np.squeeze(pr[i]))))
-        nrmses.append(compare_nrmse(prctile_norm(np.squeeze(gt[i])), prctile_norm(np.squeeze(pr[i]))))
-        psnrs.append(compare_psnr(prctile_norm(np.squeeze(gt[i])), prctile_norm(np.squeeze(pr[i])), data_range=1))
-        ssims.append(compare_ssim(prctile_norm(np.squeeze(gt[i])), prctile_norm(np.squeeze(pr[i]))))
+    # for i in range(n):
+    #     mses.append(compare_mse(prctile_norm(np.squeeze(gt[i])), prctile_norm(np.squeeze(pr[i]))))
+    #     nrmses.append(compare_nrmse(prctile_norm(np.squeeze(gt[i])), prctile_norm(np.squeeze(pr[i]))))
+    #     psnrs.append(compare_psnr(prctile_norm(np.squeeze(gt[i])), prctile_norm(np.squeeze(pr[i])), data_range=1))
+    #     ssims.append(compare_ssim(prctile_norm(np.squeeze(gt[i])), prctile_norm(np.squeeze(pr[i]))))
+    
+    # 所有通道一起计算
+    gt = np.transpose(gt, (1, 2, 0))
+    pr = np.transpose(pr, (1, 2, 0)) # H W C
+    mses.append(compare_mse(prctile_norm(np.squeeze(gt)), prctile_norm(np.squeeze(pr))))
+    nrmses.append(compare_nrmse(prctile_norm(np.squeeze(gt)), prctile_norm(np.squeeze(pr))))
+    psnrs.append(compare_psnr(prctile_norm(np.squeeze(gt)), prctile_norm(np.squeeze(pr)), data_range=1))
+    ssims.append(compare_ssim(prctile_norm(np.squeeze(gt)), prctile_norm(np.squeeze(pr)), multichannel=True))
+    
     return mses, nrmses, psnrs, ssims

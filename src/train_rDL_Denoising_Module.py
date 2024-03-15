@@ -1,5 +1,6 @@
 import os
 import cv2
+import logging
 import datetime
 import numpy as np
 import numpy.fft as F
@@ -113,12 +114,15 @@ if args.cuda:
 # --------------------------------------------------------------------------------
 if SR_model_name == "DFCAN":
     from model.DFCAN import DFCAN
-    SR_model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=scale_factor, input_channels=nphases*ndirs, out_channels=1)
+    SR_model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=scale_factor, 
+                     input_channels=nphases*ndirs, out_channels=1)
     print("SR:DFCAN model create")
 
 if DN_model_name == "rDL_Denoiser":
     from model.rDL_Denoise import rDL_Denoise
-    DN_model = rDL_Denoise(input_channels=nphases, output_channels=64, input_height=input_height, input_width=input_width, attention_mode=DN_attention_mode)
+    DN_model = rDL_Denoise(input_channels=nphases, output_channels=64, 
+                           input_height=input_height, input_width=input_width, 
+                           attention_mode=DN_attention_mode)
     print("DN:rDL_Denoise model create")
 
 # optimizer
@@ -127,7 +131,8 @@ DN_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     DN_optimizer, mode='min', factor=lr_decay_factor, patience=4, verbose=True)
 
 # load SR model
-_, _ = load_checkpoint(SR_save_weights_path, SR_resume_name, None, SR_mode, SR_model, None, None, local_rank)
+_, _ = load_checkpoint(SR_save_weights_path, SR_resume_name, None, 
+                       SR_mode, SR_model, None, None, local_rank)
 
 # load DN model
 start_epoch = 0
@@ -141,6 +146,8 @@ loss_function = MSE_SSIMLoss(ssim_weight=ssim_weight)
 
 SR_model.to(device)
 DN_model.to(device)
+
+
 # --------------------------------------------------------------------------------
 #                         select dataset and dataloader
 # --------------------------------------------------------------------------------
@@ -159,6 +166,23 @@ val_loader = get_loader_DN('val', batch_size, data_root, True, num_workers)
 # def write_log(writer, names, logs, epoch):
 #     writer.add_scalar(names, logs, epoch)
 
+# logging
+logging.basicConfig(level=logging.INFO)
+log_file_path = os.path.join(DN_log_path, "log.txt")
+
+# 创建一个文件处理器，用于写入日志到文件
+file_handler = logging.FileHandler(log_file_path)
+file_handler.setLevel(logging.INFO)
+
+# 设置日志格式
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+
+# 将文件处理器和流处理器添加到日志记录器
+logging.getLogger().addHandler(file_handler)
+
+if local_rank==0:
+    logging.info(args)
 
 # --------------------------------------------------------------------------------
 #                         predefine OTF and other parameters
@@ -228,11 +252,12 @@ def train(epoch):
         # ------------------------------------------------------------------------------
         #                               SR model predict
         # ------------------------------------------------------------------------------
+        # SR_img_in:1 9 128 128
         SR_img_in = img_in.unsqueeze(0).to(device)
         img_SR = prctile_norm(SR_model(SR_img_in).cpu().detach().numpy())
         # cv2.resize expects (H,W,C).
         img_SR = np.squeeze(img_SR)
-        # img_SR.shape = 128 128
+        # img_SR.shape = 256 256, Ny_hr = Nx_hr = 128
         img_SR = cv2.resize(img_SR, (Ny_hr, Nx_hr))
         
 
@@ -304,10 +329,14 @@ def train(epoch):
         modamp_abs = np.mean(np.abs(modamp))
         elapsed_time = datetime.datetime.now() - start_time
         # 其他训练步骤...
-        if batch_idx % log_iter == 0:
-            print('Train Epoch: {} [{}/{}]\tLoss: {:.6f}\tModamp: {:.6f}\tLr: {:.6f}\tTime({})'.format(
-                epoch, batch_idx, len(train_loader), loss.item(), modamp_abs, 
-                DN_optimizer.param_groups[-1]['lr'], elapsed_time))
+        if local_rank==0 and batch_idx!=0 and batch_idx % log_iter == 0:
+            logging.info('Train Epoch: {} [{}/{}]\tLoss: {:.8f}\tModamp: {:.6f}\tLr: {:.8f}\tTime({})'
+                         .format(epoch, batch_idx, len(train_loader), loss.item(), 
+                                 modamp_abs,DN_optimizer.param_groups[-1]['lr'], elapsed_time)
+                                 )
+            # print('Train Epoch: {} [{}/{}]\tLoss: {:.6f}\tModamp: {:.6f}\tLr: {:.6f}\tTime({})'.format(
+            #     epoch, batch_idx, len(train_loader), loss.item(), modamp_abs, 
+            #     DN_optimizer.param_groups[-1]['lr'], elapsed_time))
             start_time = datetime.datetime.now()
 
         # # 测试代码
@@ -321,8 +350,13 @@ def val(epoch):
     SR_model.eval()
     DN_model.eval()
     loss_function.eval()
-    Loss_av = AverageMeter()
+
+    mse_loss = nn.MSELoss()
+    ssim = SSIM() 
+
     Loss_all = AverageMeter()
+    mse_avg = AverageMeter()
+    ssim_avg = AverageMeter()
     
     start_time = datetime.datetime.now()
     with torch.no_grad():
@@ -364,7 +398,7 @@ def val(epoch):
             img_SR = prctile_norm(SR_model(SR_img_in).cpu().detach().numpy())
             # cv2.resize expects (H,W,C).
             img_SR = np.squeeze(img_SR)
-            # img_SR.shape = 128 128
+            # img_SR.shape = 256 256
             img_SR = cv2.resize(img_SR, (Ny_hr, Nx_hr))
             
 
@@ -427,23 +461,28 @@ def val(epoch):
             outputs = DN_model(input_PFE_batch, input_MPE_batch)
             loss = loss_function(outputs, gt_batch)
 
-            Loss_av.update(loss.item())
             Loss_all.update(loss.item())
+            mse_avg.update(mse_loss(outputs, gt_batch))
+            ssim_avg.update(ssim(outputs, gt_batch)) # 3 3 128 128 
 
             modamp_abs = np.mean(np.abs(modamp))
             elapsed_time = datetime.datetime.now() - start_time
             # 其他训练步骤...
-            if batch_idx % log_iter == 0:
-                print('Val Epoch: {} [{}/{}]\tLoss: {:.6f}\tModamp: {:.6f}\tTime({})'.format(
-                    epoch, batch_idx, len(val_loader), Loss_av.avg, modamp_abs, elapsed_time))
+            if local_rank==0 and batch_idx!=0 and batch_idx % log_iter == 0:
+                logging.info('Val Epoch: {} [{}/{}]\tLoss: {:.8f}\tSSIM: {:.8f} \t MSE: {:.8f}\tModamp: {:.6f}\tTime({})'
+                         .format(epoch, batch_idx, len(val_loader), loss.item(), ssim_avg.avg, mse_avg.avg, 
+                                 modamp_abs, elapsed_time)
+                                 )
+                # print('Val Epoch: {} [{}/{}]\tLoss: {:.6f}\tModamp: {:.6f}\tTime({})'.format(
+                #     epoch, batch_idx, len(val_loader), loss.item(), modamp_abs, elapsed_time))
                 start_time = datetime.datetime.now()
-                Loss_av = AverageMeter()
+                # ssim_avg.reset()
+                # mse_avg.reset()
 
             # # 测试代码
             # if(batch_idx > 5):
             #     break
-
-    write_log(writer, 'Val_Loss', Loss_all.avg, epoch)
+    
     return Loss_all.avg
 
 # --------------------------------------------------------------------------------
@@ -455,7 +494,7 @@ def sample_img(epoch):
 
     mses, nrmses, psnrs, ssims = [], [], [], []
     input_show, pred_show, gt_show = [], [], []
-
+    img_name = []
     with torch.no_grad():
         data_iterator = iter(val_loader)
         for i in range(3):
@@ -463,6 +502,8 @@ def sample_img(epoch):
 
             inputs = val_batch['input']
             gts = val_batch['gt']
+            inputs_path = val_batch['imgpaths_input']
+            img_name.append(inputs_path[0].split('/')[-1])
             
             assert inputs.shape[0]==1 and gts.shape[0]==1
             # 9 128 128
@@ -472,9 +513,9 @@ def sample_img(epoch):
             cur_k0, modamp = cal_modamp(np.array(img_gt).transpose((1, 2, 0)), prol_OTF, pParam)
             
             # # 很怪 看不懂 TF使用while去寻找
-            # if np.mean(np.abs(modamp)) < 0:
-            #     print('np.mean(np.abs(modamp)) < 0')
-            #     continue
+            if np.mean(np.abs(modamp)) < 0:
+                print('np.mean(np.abs(modamp)) < 0')
+                continue
             
             # SIM相关 看不懂
             cur_k0_angle = np.array(np.arctan(cur_k0[:, 1] / cur_k0[:, 0]))
@@ -498,7 +539,8 @@ def sample_img(epoch):
             img_SR = prctile_norm(SR_model(SR_img_in).cpu().detach().numpy())
             # cv2.resize expects (H,W,C).
             img_SR = np.squeeze(img_SR)
-            # img_SR.shape = 128 128
+            # print(img_SR.shape)
+            # img_SR.shape = 256 256
             img_SR = cv2.resize(img_SR, (Ny_hr, Nx_hr))
             
 
@@ -546,7 +588,7 @@ def sample_img(epoch):
             input_MPE_batch = []
             input_PFE_batch = []
             gt_batch = []
-            for i in range(1):
+            for i in range(1):# 只取三个通道进行计算
                 input_MPE_batch.append(img_gen[:, :, i * nphases:(i + 1) * nphases])
                 input_PFE_batch.append(img_in[:, :, i * nphases:(i + 1) * nphases])
                 gt_batch.append(img_gt[:, :, i * nphases:(i + 1) * nphases])
@@ -576,39 +618,46 @@ def sample_img(epoch):
     fig, axs = plt.subplots(r, c)
     cnt = 0
     for row in range(r):
+        # axs[row, 1].set_title(
+        #     ' PSNR=%.4f, SSIM=%.4f' % (psnrs[row * nphases], ssims[row * nphases]))
         axs[row, 1].set_title(
-            ' PSNR=%.4f, SSIM=%.4f' % (psnrs[row * nphases], ssims[row * nphases]))
+            'IMG=%s;PSNR=%.4f; SSIM=%4f' % (img_name[row],psnrs[row], ssims[row]))
         for col, image in enumerate([input_show, pred_show, gt_show]):
             axs[row, col].imshow(np.squeeze(image[row]))
             axs[row, col].axis('off')
         cnt += 1
-    fig.savefig(DN_sample_path + '%d.png' % epoch)
+        
+    fig.savefig(os.path.join(DN_sample_path, '%d.png' % epoch))
     plt.close()
 
 
 def main():
     # 定义训练循环
     global min_loss
-    for epoch in range(start_epoch, total_epoch):
-        train(epoch)
-        # 模型保存和评估...
-        test_loss = val(epoch)
 
-        if epoch % sample_epoch == 0:
-            sample_img(epoch)
+    # _ = val(999)
+    sample_img(999)
 
-        # save checkpoint
-        is_best = test_loss < min_loss
-        min_loss = min(test_loss, min_loss)
-        save_checkpoint({
-            'epoch': epoch,
-            'state_dict': DN_model.state_dict(), # 单GPU无module
-            'optimizer': DN_optimizer.state_dict(),
-            'min_loss': min_loss
-        }, is_best, args.exp_name, DN_save_weights_path)
+    # for epoch in range(start_epoch, total_epoch):
+    #     train(epoch)
+    #     # 模型保存和评估...
+    #     test_loss = val(epoch)
 
-        # # update optimizer policy
-        DN_scheduler.step(test_loss)
+    #     if epoch % sample_epoch == 0:
+    #         sample_img(epoch)
+
+    #     # save checkpoint
+    #     is_best = test_loss < min_loss
+    #     min_loss = min(test_loss, min_loss)
+    #     save_checkpoint({
+    #         'epoch': epoch,
+    #         'state_dict': DN_model.state_dict(), # 单GPU无module
+    #         'optimizer': DN_optimizer.state_dict(),
+    #         'min_loss': min_loss
+    #     }, is_best, args.exp_name, DN_save_weights_path)
+
+    #     # # update optimizer policy
+    #     DN_scheduler.step(test_loss)
 
 if __name__ == "__main__":
     main()
