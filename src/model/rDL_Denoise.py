@@ -122,15 +122,49 @@ class Feature_Extracte(nn.Module):
         return out
 
 class rDL_Denoise(nn.Module):
-    def __init__(self, input_channels=3, output_channels=64, input_height=128, input_width=128, n_rgs=[5, 2, 5], attention_mode='SEnet'):
+    def __init__(self, input_channels=3, output_channels=64, input_height=128, 
+                 input_width=128, n_rgs=[5, 2, 5], attention_mode='SEnet', 
+                 encoder_type='MPE+PFE'):
         super(rDL_Denoise, self).__init__()
-        self.PFE = Feature_Extracte(input_channels, output_channels, input_height, input_width, n_rgs[0], attention_mode)
-        self.MPE = Feature_Extracte(input_channels, output_channels, input_height, input_width, n_rgs[1], attention_mode)
-        self.FCD = FCD(input_channels, output_channels, input_height, input_width, n_rgs[2],attention_mode=attention_mode)
+
+        self.encoder_type = encoder_type
+        if self.encoder_type == 'MPE':
+            self.MPE = Feature_Extracte(input_channels, output_channels, 
+                                        input_height, input_width, n_rgs[1], 
+                                        attention_mode)
+        elif self.encoder_type == 'PFE':
+            self.PFE = Feature_Extracte(input_channels, output_channels, 
+                                        input_height, input_width, n_rgs[0], 
+                                        attention_mode)
+        elif self.encoder_type == 'MPE+PFE':
+            self.PFE = Feature_Extracte(input_channels, output_channels, 
+                                        input_height, input_width, n_rgs[0], 
+                                        attention_mode)
+            self.MPE = Feature_Extracte(input_channels, output_channels, 
+                                        input_height, input_width, n_rgs[1], 
+                                        attention_mode)
+        else:
+            exit()
+
+        self.FCD = FCD(input_channels, output_channels, input_height, 
+                       input_width, n_rgs[2],attention_mode=attention_mode)
 
     def forward(self, inputs_PFE, inputs_MPE):
-        pfe = self.PFE(inputs_PFE)
-        mpe = self.MPE(inputs_MPE)
-        fcd = self.FCD(pfe + mpe)
+        if self.encoder_type == 'MPE':
+            mpe = self.MPE(inputs_MPE)
+            fcd = self.FCD(mpe)
+
+        elif self.encoder_type == 'PFE':
+            pfe = self.PFE(inputs_PFE)
+            fcd = self.FCD(pfe)
+            
+        elif self.encoder_type == 'MPE+PFE':
+            mpe = self.MPE(inputs_MPE)
+            pfe = self.PFE(inputs_PFE)
+            fcd = self.FCD(pfe + mpe)
+
+        else:
+            exit()
+        
         return fcd
     

@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
-# from torch.utils.tensorboard import SummaryWriter   
+from torch.utils.tensorboard import SummaryWriter   
 
 import config.config_DN as config_DN
 from utils.checkpoint import save_checkpoint, load_checkpoint
@@ -38,6 +38,7 @@ SR_model_name = args.SR_model_name
 DN_model_name = args.DN_model_name
 SR_resume_name = args.SR_resume_name
 DN_attention_mode = args.DN_attention_mode
+Encoder_type = args.Encoder_type
 
 total_epoch = args.total_epoch
 sample_epoch = args.sample_epoch
@@ -122,7 +123,7 @@ if DN_model_name == "rDL_Denoiser":
     from model.rDL_Denoise import rDL_Denoise
     DN_model = rDL_Denoise(input_channels=nphases, output_channels=64, 
                            input_height=input_height, input_width=input_width, 
-                           attention_mode=DN_attention_mode)
+                           attention_mode=DN_attention_mode,encoder_type=Encoder_type)
     print("DN:rDL_Denoise model create")
 
 # optimizer
@@ -636,28 +637,28 @@ def main():
     global min_loss
 
     # _ = val(999)
-    sample_img(999)
+    # sample_img(999)
 
-    # for epoch in range(start_epoch, total_epoch):
-    #     train(epoch)
-    #     # 模型保存和评估...
-    #     test_loss = val(epoch)
+    for epoch in range(start_epoch, total_epoch):
+        train(epoch)
+        # 模型保存和评估...
+        test_loss = val(epoch)
 
-    #     if epoch % sample_epoch == 0:
-    #         sample_img(epoch)
+        if epoch % sample_epoch == 0:
+            sample_img(epoch)
 
-    #     # save checkpoint
-    #     is_best = test_loss < min_loss
-    #     min_loss = min(test_loss, min_loss)
-    #     save_checkpoint({
-    #         'epoch': epoch,
-    #         'state_dict': DN_model.state_dict(), # 单GPU无module
-    #         'optimizer': DN_optimizer.state_dict(),
-    #         'min_loss': min_loss
-    #     }, is_best, args.exp_name, DN_save_weights_path)
+        # save checkpoint
+        is_best = test_loss < min_loss
+        min_loss = min(test_loss, min_loss)
+        save_checkpoint({
+            'epoch': epoch,
+            'state_dict': DN_model.state_dict(), # 单GPU无module
+            'optimizer': DN_optimizer.state_dict(),
+            'min_loss': min_loss
+        }, is_best, args.exp_name, DN_save_weights_path)
 
-    #     # # update optimizer policy
-    #     DN_scheduler.step(test_loss)
+        # # update optimizer policy
+        DN_scheduler.step(test_loss)
 
 if __name__ == "__main__":
     main()

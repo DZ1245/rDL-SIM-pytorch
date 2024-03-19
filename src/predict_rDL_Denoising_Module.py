@@ -142,6 +142,7 @@ for raw in raw_list:
 
     
     if height!=input_height or width!=input_width:
+        print(p,height,width)
         continue
 
     # 这里默认num_average=1

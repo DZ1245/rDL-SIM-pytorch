@@ -131,7 +131,7 @@ if load_weights_flag==1:
 model = DDP(model, device_ids=[local_rank], output_device=local_rank)
 
 # MSEloss + SSIMloss
-loss_function = MSESSIMLoss(ssim_weight=ssim_weight)
+loss_function = MSE_SSIMLoss(ssim_weight=ssim_weight)
 
 # --------------------------------------------------------------------------------
 #                         select dataset and dataloader

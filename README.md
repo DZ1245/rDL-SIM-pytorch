@@ -40,4 +40,6 @@
 
 - 2024.03.08:存储val数据，后续可视化
 
-- 2024.03.15:**rDL的Simple中9通道只取一个通道进行推理及指标计算，并且输出的**;修改cal_comp中单独计算每个通道SSIM、PSNR等为整体统一计算;**from skimage.metrics import structural_similarity as compare_ssim 于pytorch_ssim库得出的值不同，后者的较低，**;让存在很大出入
+- 2024.03.15:**rDL的Simple中9通道只取一个通道进行推理及指标计算，并且输出的**;修改cal_comp中单独计算每个通道SSIM、PSNR等为整体统一计算;**from skimage.metrics import structural_similarity as compare_ssim 于pytorch_ssim库得出的值不同，后者的较低，**;仍存在很大出入;
+
+- 2024.03.16:rDL在预测中采用successive noise raw叠加，增强其中的条纹信息来辅助估计，**测试数据统计中暂时不使用，一张张预测**；

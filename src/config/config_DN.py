@@ -39,7 +39,7 @@ model_arg.add_argument("--SR_model_name", type=str, default="DFCAN")
 model_arg.add_argument("--DN_model_name", type=str, default="rDL_Denoiser")
 model_arg.add_argument("--SR_resume_name", type=str, default="")
 model_arg.add_argument("--DN_attention_mode", type=str, default="SEnet")
-
+model_arg.add_argument("--Encoder_type", type=str, default="MPE+PFE")
 
 # Training / test parameters
 learn_arg = add_argument_group('Learning')
