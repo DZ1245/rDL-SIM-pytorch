@@ -43,3 +43,5 @@
 - 2024.03.15:**rDL的Simple中9通道只取一个通道进行推理及指标计算，并且输出的**;修改cal_comp中单独计算每个通道SSIM、PSNR等为整体统一计算;**from skimage.metrics import structural_similarity as compare_ssim 于pytorch_ssim库得出的值不同，后者的较低，**;仍存在很大出入;
 
 - 2024.03.16:rDL在预测中采用successive noise raw叠加，增强其中的条纹信息来辅助估计，**测试数据统计中暂时不使用，一张张预测**；
+
+- 2024.03.20:处理PKU数据到模型所需格式，共49 * 55 * 11 张图片，但是PKU数据集数据质量不佳；修改代码val和sample中的SSIM计算函数，保持与测试中一致，使用Skimage库；开始使用PKU数据进行训练；

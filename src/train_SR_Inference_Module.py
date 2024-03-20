@@ -13,10 +13,11 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 # from torch.utils.tensorboard import SummaryWriter   
 from torch.optim import AdamW
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
+from skimage.metrics import structural_similarity as compare_ssim
 
 import config.config_SR as config_SR
 from utils.loss import MSE_SSIMLoss, AverageMeter
-from utils.pytorch_ssim import SSIM
+# from utils.pytorch_ssim import SSIM
 from utils.checkpoint import save_checkpoint, load_checkpoint
 
 
@@ -214,8 +215,8 @@ def train(epoch):
             # Loss_av = AverageMeter()
 
         # 测试代码
-        # if(batch_idx > 5):
-        #     break
+        if(batch_idx > 2):
+            break
 
 
 # --------------------------------------------------------------------------------
@@ -225,9 +226,9 @@ def val(epoch):
     model.eval()
     loss_function.eval()
     mse_loss = nn.MSELoss()
-    ssim = SSIM() 
+    # ssim = SSIM() 
 
-    # Loss_av = AverageMeter()
+    Loss_av = AverageMeter()
     mse_av = AverageMeter()
     ssim_av = AverageMeter()
 
@@ -247,10 +248,18 @@ def val(epoch):
             outputs = model(inputs)
 
             loss = loss_function(outputs, gts)
-            # Loss_av.update(loss.item())
+            Loss_av.update(loss.item())
 
             mse_av.update(mse_loss(outputs, gts))
-            ssim_av.update(ssim(outputs, gts))
+            out_tmp =  outputs.detach().cpu().numpy()
+            out_tmp = np.squeeze(out_tmp)
+            out_tmp = np.transpose(out_tmp,(1, 2, 0))# 256 256 bt
+            gt_tmp =  gts.detach().cpu().numpy()
+            gt_tmp = np.squeeze(gt_tmp)
+            gt_tmp = np.transpose(gt_tmp,(1, 2, 0)) # 256 256 bt
+
+            ssim_av.update(compare_ssim(gt_tmp, out_tmp))
+            # ssim_av.update(ssim(outputs, gts))
             
             # 测试代码
             # if(batch_idx > 5):
@@ -258,7 +267,7 @@ def val(epoch):
 
     if local_rank==0:
         logging.info('Val Epoch: {}\tLoss: {:.8f} \tSSIM: {:.8f} \t MSE: {:.8f}'
-                     .format(epoch, loss.item(), ssim_av.avg, mse_av.avg)
+                     .format(epoch, Loss_av.avg, ssim_av.avg, mse_av.avg)
                      )
     # print('Val Epoch: {} \tLoss: {:.6f} \tSSIM: {:.6f} \t MSE: {:.6f} \tTime({:.2f})'.format(
     #         epoch, Loss_av.avg, ssim_av.avg, mse_av.avg, time.time() - t))
@@ -267,7 +276,7 @@ def val(epoch):
     # write_log(writer, 'SSIM', ssim_av.avg, epoch)
     # write_log(writer, 'MSE', mse_av.avg, epoch)
 
-    return loss.item()
+    return Loss_av.avg
 
 
 # --------------------------------------------------------------------------------
@@ -276,7 +285,7 @@ def val(epoch):
 def sample_img(epoch):
     model.eval()
     mse_loss = nn.MSELoss()
-    ssim = SSIM() 
+    # ssim = SSIM() 
 
     data_iterator = iter(val_loader)
     val_batch = next(data_iterator)
@@ -305,10 +314,14 @@ def sample_img(epoch):
         gt_show.append(img_gt)
         output_show.append(img_out)
         mses.append(mse_loss(outputs[i], gts[i]))
-        ssims.append(ssim(outputs[i].unsqueeze(0), gts[i].unsqueeze(0)))
+        # ssims.append(ssim(outputs[i].unsqueeze(0), gts[i].unsqueeze(0)))
 
         data_range = np.max(img_gt) - np.min(img_gt)
+        img_gt = np.squeeze(img_gt)
+        img_out = np.squeeze(img_out)
+
         psnrs.append(compare_psnr(img_gt, img_out, data_range=data_range))
+        ssims.append(compare_ssim(img_gt, img_out))
 
     # show some examples
     fig, axs = plt.subplots(r, c)

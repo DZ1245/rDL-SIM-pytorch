@@ -6,11 +6,13 @@ import numpy as np
 import numpy.fft as F
 import matplotlib.pyplot as plt
 
-
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
 from torch.utils.tensorboard import SummaryWriter   
+
+from skimage.metrics import peak_signal_noise_ratio as compare_psnr
+from skimage.metrics import structural_similarity as compare_ssim
 
 import config.config_DN as config_DN
 from utils.checkpoint import save_checkpoint, load_checkpoint
@@ -353,11 +355,12 @@ def val(epoch):
     loss_function.eval()
 
     mse_loss = nn.MSELoss()
-    ssim = SSIM() 
+    # ssim = SSIM() 
 
     Loss_all = AverageMeter()
     mse_avg = AverageMeter()
     ssim_avg = AverageMeter()
+    psnr_avg = AverageMeter()
     
     start_time = datetime.datetime.now()
     with torch.no_grad():
@@ -463,16 +466,27 @@ def val(epoch):
             loss = loss_function(outputs, gt_batch)
 
             Loss_all.update(loss.item())
+
             mse_avg.update(mse_loss(outputs, gt_batch))
-            ssim_avg.update(ssim(outputs, gt_batch)) # 3 3 128 128 
+
+            out_tmp = outputs.detach().cpu().numpy()
+            out_tmp = np.reshape(out_tmp, [nphases*ndirs, input_height, input_width])
+            out_tmp = np.transpose(out_tmp,(1, 2, 0))
+            gt_tmp = gt_batch.detach().cpu().numpy()
+            gt_tmp = np.reshape(gt_tmp, [nphases*ndirs, input_height, input_width])
+            gt_tmp = np.transpose(gt_tmp,(1, 2, 0))
+
+            # ssim_avg.update(ssim(outputs, gt_batch)) # 3 3 128 128 
+            ssim_avg.update(compare_ssim(gt_tmp, out_tmp, multichannel=True))
+            psnr_avg.update(compare_psnr(gt_tmp, out_tmp, data_range=1))
 
             modamp_abs = np.mean(np.abs(modamp))
             elapsed_time = datetime.datetime.now() - start_time
             # 其他训练步骤...
             if local_rank==0 and batch_idx!=0 and batch_idx % log_iter == 0:
-                logging.info('Val Epoch: {} [{}/{}]\tLoss: {:.8f}\tSSIM: {:.8f} \t MSE: {:.8f}\tModamp: {:.6f}\tTime({})'
-                         .format(epoch, batch_idx, len(val_loader), loss.item(), ssim_avg.avg, mse_avg.avg, 
-                                 modamp_abs, elapsed_time)
+                logging.info('Val Epoch: {} [{}/{}]\tLoss: {:.4f}\tSSIM: {:.4f} \t MSE: {:.4f}\tPSNR: {:.4f}\tModamp: {:.4f}\tTime({})'
+                         .format(epoch, batch_idx, len(val_loader), Loss_all.avg(), ssim_avg.avg, 
+                                mse_avg.avg, psnr_avg.avg, modamp_abs, elapsed_time)
                                  )
                 # print('Val Epoch: {} [{}/{}]\tLoss: {:.6f}\tModamp: {:.6f}\tTime({})'.format(
                 #     epoch, batch_idx, len(val_loader), loss.item(), modamp_abs, elapsed_time))
