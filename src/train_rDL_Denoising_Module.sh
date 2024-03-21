@@ -9,7 +9,7 @@ python  -m torch.distributed.launch --nproc_per_node 4 --master_port 29551 \
                                     --DN_attention_mode SEnet --Encoder_type MPE+PFE \
                                     --total_epoch 10000 --sample_epoch 2 --log_iter 200 \
                                     --batch_size 1 --start_lr 1e-4 --lr_decay_factor 0.5 --ssim_weight 1e-1 \
-                                    --num_gpu 1 --num_workers 5 --load_weights_flag 1 \
+                                    --num_gpu 1 --num_workers 5 --norm_flag 0 --load_weights_flag 1 \
                                     --exp_name rDL_pt_PKUse \
                                     --resume_name rDL_pt_PKUse \
                                     --SR_resume_name DFCAN_PKU_separate \

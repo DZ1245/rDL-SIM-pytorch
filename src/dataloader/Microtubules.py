@@ -97,8 +97,10 @@ def get_loader_SR(mode, height, width, norm_flag, resize_flag, scale, wf, batch_
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)
 
 class Microtubules_DN(Dataset):
-    def __init__(self, mode, data_root="/data/home/dz/rDL_SIM/SR/Microtubules_result"):
+    def __init__(self, mode, norm_flag=0, data_root="/data/home/dz/rDL_SIM/SR/Microtubules_result"):
         # 根据模式选择数据
+        self.norm_flag = norm_flag
+        
         if mode == "train":
             input_path = os.path.join(data_root,'train')
             input_name = os.listdir(input_path)
@@ -141,6 +143,10 @@ class Microtubules_DN(Dataset):
                 img = tiff.imread(cur).astype(np.float32)
                 curBatch.append(img)
             gt = tiff.imread(imgpaths_gt).astype(np.float32)
+
+        if self.norm_flag==1:
+            curBatch = prctile_norm(np.array(curBatch))
+            gt = prctile_norm(gt)
             
         batch  = {
             'input' : curBatch,
@@ -153,6 +159,6 @@ class Microtubules_DN(Dataset):
     def __len__(self):
         return len(self.imglist_input)
     
-def get_loader_DN(mode, batch_size, data_root,shuffle=False, num_workers=0):
-    dataset = Microtubules_DN(mode, data_root)
+def get_loader_DN(mode, batch_size, data_root, norm_flag=0 ,shuffle=False, num_workers=0):
+    dataset = Microtubules_DN(mode, norm_flag, data_root)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)
