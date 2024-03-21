@@ -234,9 +234,6 @@ def val(epoch):
 
             outputs = DN_model(inputs, img_SR)
             loss = loss_function(outputs, gts)
-            
-            outputs = DN_model(inputs, img_SR)
-            loss = loss_function(outputs, gts)
 
             Loss_all.update(loss.item())
             mse_avg.update(mse_loss(outputs, gts))
@@ -246,7 +243,8 @@ def val(epoch):
             gt_tmp = gts.detach().cpu().numpy()
             gt_tmp = np.transpose(gt_tmp,(0, 2, 3, 1))
 
-            for i in range(batch_size):
+
+            for i in range(gt_tmp.shape[0]):
                 ssim_avg.update(compare_ssim(gt_tmp[i], out_tmp[i], multichannel=True))
                 psnr_avg.update(compare_psnr(gt_tmp[i], out_tmp[i], data_range=1))
 
