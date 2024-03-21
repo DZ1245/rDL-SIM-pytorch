@@ -215,8 +215,8 @@ def train(epoch):
             # Loss_av = AverageMeter()
 
         # 测试代码
-        if(batch_idx > 2):
-            break
+        # if(batch_idx > 2):
+        #     break
 
 
 # --------------------------------------------------------------------------------

@@ -3,9 +3,17 @@ import torch
 import shutil
 from collections import OrderedDict
 
+def to_cuda(optimizer):
+    for state in optimizer.state.values():
+        for k, v in state.items():
+            if torch.is_tensor(v):
+                state[k] = v.cuda()
+    return optimizer
+
 def update_lr(optimizer, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
+    return optimizer
 
 def save_checkpoint(state, is_best, exp_name, save_path, filename='checkpoint.pth'):
     """Saves checkpoint to disk"""
@@ -67,7 +75,8 @@ def load_checkpoint(save_weights_path, resume_exp, exp_name, mode, model, optimi
     # if size mismatch, give up on loading optimizer; if resuming from other experiment, also don't load optimizer
     if (not mismatch) and (optimizer is not None) and (resume_exp is not None):
         optimizer.load_state_dict(checkpoint['optimizer'])
-        update_lr(optimizer, lr)
+        optimizer = update_lr(optimizer, lr)
+        optimizer = to_cuda(optimizer)
         print("loaded optimizer succeed")
     
     print("loaded checkpoint %s" % load_name)

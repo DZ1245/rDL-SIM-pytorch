@@ -337,9 +337,6 @@ def train(epoch):
                          .format(epoch, batch_idx, len(train_loader), loss.item(), 
                                  modamp_abs,DN_optimizer.param_groups[-1]['lr'], elapsed_time)
                                  )
-            # print('Train Epoch: {} [{}/{}]\tLoss: {:.6f}\tModamp: {:.6f}\tLr: {:.6f}\tTime({})'.format(
-            #     epoch, batch_idx, len(train_loader), loss.item(), modamp_abs, 
-            #     DN_optimizer.param_groups[-1]['lr'], elapsed_time))
             start_time = datetime.datetime.now()
 
         # # 测试代码
@@ -485,7 +482,7 @@ def val(epoch):
             # 其他训练步骤...
             if local_rank==0 and batch_idx!=0 and batch_idx % log_iter == 0:
                 logging.info('Val Epoch: {} [{}/{}]\tLoss: {:.4f}\tSSIM: {:.4f} \t MSE: {:.4f}\tPSNR: {:.4f}\tModamp: {:.4f}\tTime({})'
-                         .format(epoch, batch_idx, len(val_loader), Loss_all.avg(), ssim_avg.avg, 
+                         .format(epoch, batch_idx, len(val_loader), Loss_all.avg, ssim_avg.avg, 
                                 mse_avg.avg, psnr_avg.avg, modamp_abs, elapsed_time)
                                  )
                 # print('Val Epoch: {} [{}/{}]\tLoss: {:.6f}\tModamp: {:.6f}\tTime({})'.format(
@@ -495,7 +492,7 @@ def val(epoch):
                 # mse_avg.reset()
 
             # # 测试代码
-            # if(batch_idx > 5):
+            # if(batch_idx > 101):
             #     break
     
     return Loss_all.avg
