@@ -126,7 +126,8 @@ class rDL_Denoise(nn.Module):
                  input_width=128, n_rgs=[5, 2, 5], attention_mode='SEnet', 
                  encoder_type='MPE+PFE'):
         super(rDL_Denoise, self).__init__()
-
+        assert encoder_type in ['MPE', 'PFE', 'MPE+PFE']
+        
         self.encoder_type = encoder_type
         if self.encoder_type == 'MPE':
             self.MPE = Feature_Extracte(input_channels, output_channels, 
