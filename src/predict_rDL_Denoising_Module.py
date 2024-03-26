@@ -25,6 +25,7 @@ SR_save_weights_path = args.SR_save_weights_path
 SR_model_name = args.SR_model_name
 DN_model_name = args.DN_model_name
 SR_resume_name = args.SR_resume_name
+Encoder_type = args.Encoder_type
 
 input_height = args.input_height
 input_width = args.input_width
@@ -62,22 +63,28 @@ SR_save_weights_path = SR_save_weights_path + data_folder + "/"
 raw_path = os.path.join('../Demo/Raw/DN',data_folder)
 result_path = os.path.join('../Demo/Result/DN',data_folder)
 gt_path = os.path.join('../Demo/GT/DN',data_folder)
+gen_path = os.path.join('../Demo/Generate/DN',data_folder)
 
 if not os.path.exists(result_path):
     os.makedirs(result_path)
-
+if not os.path.exists(gen_path):
+    os.makedirs(gen_path)
 
 # --------------------------------------------------------------------------------
 #                               select models
 # --------------------------------------------------------------------------------
 if SR_model_name == "DFCAN":
     from model.DFCAN import DFCAN
-    SR_model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=2, input_channels=nphases*ndirs, mid_channels=64 , out_channels=1)
+    SR_model = DFCAN(n_ResGroup=4, n_RCAB=4, scale=2, 
+                     input_channels=nphases*ndirs, mid_channels=64 , 
+                     out_channels=1)
     print("SR:DFCAN model create")
 
 if DN_model_name == "rDL_Denoiser":
     from model.rDL_Denoise import rDL_Denoise
-    DN_model = rDL_Denoise(input_channels=nphases, output_channels=64, input_height=input_height, input_width=input_width)
+    DN_model = rDL_Denoise(input_channels=nphases, output_channels=64, 
+                           input_height=input_height, input_width=input_width,
+                           encoder_type=Encoder_type)
     print("DN:rDL_Denoise model create")
 
 
@@ -242,3 +249,8 @@ for raw in raw_list:
     out_path = os.path.join(result_path,raw[:-4] + '_result.tif')
     print(out_path)
     tiff.imwrite(out_path, out)
+
+    img_gen = np.transpose(img_gen, (2, 0, 1))
+    img_gen = np.flip(img_gen, axis=1)
+    gen_out = os.path.join(gen_path,raw[:-4] + '_gen.tif')
+    tiff.imwrite(gen_out, img_gen)
