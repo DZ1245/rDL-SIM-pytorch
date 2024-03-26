@@ -70,23 +70,30 @@ class ResidualGroup(nn.Module):
 
 # PFE，MPE特征融合后提取
 class FCD(nn.Module):
-    def __init__(self,input_channels=9, output_channels=64, input_height=128, input_width=128, n_rg=5, scale=2, attention_mode='SEnet'):
+    def __init__(self,input_channels=9, output_channels=64, 
+                 input_height=128, input_width=128, n_rg=5, 
+                 scale=2, attention_mode='SEnet'):
         super(FCD, self).__init__()
 
-        self.conv1 = nn.Conv2d(output_channels, output_channels, kernel_size=3, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(output_channels, output_channels, 
+                               kernel_size=3, stride=1, padding=1)
         self.leaky_relu = nn.LeakyReLU(negative_slope=0.2)
 
-        ResGroup_list = [ResidualGroup(5, output_channels, input_height, input_width, attention_mode) for i in range(n_rg)]
+        ResGroup_list = [ResidualGroup(5, output_channels, input_height, input_width, attention_mode) 
+                         for i in range(n_rg)]
         self.ResGroup = nn.Sequential(*ResGroup_list)
 
         
-        self.conv2 = nn.Conv2d(output_channels, output_channels * (scale ** 2), kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(output_channels, output_channels * (scale ** 2), 
+                               kernel_size=3, stride=1, padding=1)
         if attention_mode == 'SEnet':
             self.attn = CALayer(output_channels * (scale ** 2), input_height, input_width)
         elif attention_mode == 'CBAM':
-            self.attn = CBAM(gate_channels=output_channels * (scale ** 2),reduction_ratio=16, pool_types=['avg', 'max'], no_spatial=False)
+            self.attn = CBAM(gate_channels=output_channels * (scale ** 2),reduction_ratio=16, 
+                             pool_types=['avg', 'max'], no_spatial=False)
 
-        self.conv3 = nn.Conv2d(output_channels * (scale ** 2), input_channels, kernel_size=3, stride=1, padding=1)
+        self.conv3 = nn.Conv2d(output_channels * (scale ** 2), input_channels, 
+                               kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
         c1 = self.conv1(x)
@@ -101,13 +108,16 @@ class FCD(nn.Module):
 
 # 特征提取
 class Feature_Extracte(nn.Module):
-    def __init__(self, input_channel=9, output_channel=64, input_height=128, input_width=128, n_rg=5, attention_mode='SEnet'):
+    def __init__(self, input_channel=9, output_channel=64, 
+                 input_height=128, input_width=128, n_rg=5, 
+                 attention_mode='SEnet'):
         super(Feature_Extracte, self).__init__()
 
         self.conv1 = nn.Conv2d(input_channel, output_channel, kernel_size=3, stride=1, padding=1)
         self.leaky_relu = nn.LeakyReLU(negative_slope=0.2)
 
-        ResGroup_list = [ResidualGroup(5, output_channel, input_height, input_width, attention_mode) for i in range(n_rg)]
+        ResGroup_list = [ResidualGroup(5, output_channel, input_height, input_width, attention_mode) 
+                         for i in range(n_rg)]
         self.ResGroup = nn.Sequential(*ResGroup_list)
 
         self.conv2 = nn.Conv2d(output_channel, output_channel, kernel_size=3, stride=1, padding=1)

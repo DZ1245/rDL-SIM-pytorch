@@ -56,6 +56,7 @@ input_width = args.input_width
 scale_factor = args.scale_factor
 norm_flag = args.norm_flag
 resize_flag = args.resize_flag
+MPE_input_channel = args.MPE_input_channel
 
 num_workers = args.num_workers
 log_iter = args.log_iter
@@ -111,7 +112,8 @@ if SR_model_name == "DFCAN":
 
 if DN_model_name == "rDL_Denoiser":
     from model.rDL_Denoise_NoPattern import rDL_Denoise
-    DN_model = rDL_Denoise(input_channels=nphases*ndirs, output_channels=64, 
+
+    DN_model = rDL_Denoise(input_channels=MPE_input_channel, output_channels=64, SR_input_channels=1,
                            input_height=input_height, input_width=input_width, 
                            attention_mode=DN_attention_mode,encoder_type=Encoder_type)
     print("DN:rDL_Denoise model create")
@@ -182,12 +184,30 @@ def train(epoch):
 
     start_time = datetime.datetime.now()
     for batch_idx, batch_info in enumerate(train_loader):
-        inputs = batch_info['input'].to(device)
+        inputs = batch_info['input'].to(device) 
         gts = batch_info['gt'].to(device)
 
         img_SR = SR_model(inputs) # bt 1 256 256
 
-        outputs = DN_model(inputs, img_SR)
+        if MPE_input_channel == 9:
+            outputs = DN_model(inputs, img_SR)
+            
+        elif MPE_input_channel == 3:
+            assert batch_size==1 # 暂时固定bt为1
+            # bt 9 128 128 -> bt*3 3 128 128
+            inputs = inputs.view(batch_size* nphases, ndirs, input_height, input_width).to(device)
+            gts = gts.view(batch_size* nphases, ndirs, input_height, input_width).to(device)
+            
+            # bt 1 256 256 -> bt*3 1 256 256
+            enlarged_tensors = []
+            for i in range(batch_size):
+                sample = img_SR[i].repeat(nphases, 1, 1, 1)
+                enlarged_tensors.append(sample)
+            img_SR = torch.cat(enlarged_tensors, dim=0).to(device)
+            outputs = DN_model(inputs, img_SR)
+        else:
+            exit()
+
         loss = loss_function(outputs, gts)
 
         # 不对SR进行训练
@@ -232,7 +252,25 @@ def val(epoch):
             
             img_SR = SR_model(inputs) # bt 1 256 256
 
-            outputs = DN_model(inputs, img_SR)
+            if MPE_input_channel == 9:
+                outputs = DN_model(inputs, img_SR)
+                
+            elif MPE_input_channel == 3:
+                assert batch_size==1 # 暂时固定bt为1
+                # bt 9 128 128 -> bt*3 3 128 128
+                inputs = inputs.view(batch_size* nphases, ndirs, input_height, input_width).to(device)
+                gts = gts.view(batch_size* nphases, ndirs, input_height, input_width).to(device)
+                
+                # bt 1 256 256 -> bt*3 1 256 256
+                enlarged_tensors = []
+                for i in range(batch_size):
+                    sample = img_SR[i].repeat(nphases, 1, 1, 1)
+                    enlarged_tensors.append(sample)
+                img_SR = torch.cat(enlarged_tensors, dim=0).to(device)
+                outputs = DN_model(inputs, img_SR)
+            else:
+                exit()
+            
             loss = loss_function(outputs, gts)
 
             Loss_all.update(loss.item())
@@ -277,44 +315,74 @@ def sample_img(epoch):
     mses, nrmses, psnrs, ssims = [], [], [], []
     input_show, pred_show, gt_show = [], [], []
     img_name = []
+    
+    sample_batch = 3 if batch_size >= 3 else batch_size
+
     with torch.no_grad():
         data_iterator = iter(val_loader)
         val_batch = next(data_iterator)
 
-        inputs = val_batch['input'][:3].to(device)
-        gts = val_batch['gt'][:3].to(device)
+        inputs = val_batch['input'][:sample_batch].to(device)
+        gts = val_batch['gt'][:sample_batch].to(device)
 
-        inputs_path = val_batch['imgpaths_input'][0:3]
-        for i in range(3):
+        inputs_path = val_batch['imgpaths_input'][:sample_batch]
+        for i in range(sample_batch):
             img_name.append(inputs_path[i].split('/')[-1])
         
-        
+        # predict
         img_SR = SR_model(inputs) # 3 1 256 256
-        outputs = DN_model(inputs, img_SR) # 3 9 128 128
+            
+        if MPE_input_channel == 9:
+            outputs = DN_model(inputs, img_SR)# 3 9 128 128
+            
+        elif MPE_input_channel == 3:
+            # bt 9 128 128 -> bt*3 3 128 128
+            inputs = inputs.view(sample_batch* nphases, ndirs, input_height, input_width).to(device)
+            
+            # bt 1 256 256 -> bt*3 1 256 256
+            enlarged_tensors = []
+            for i in range(sample_batch):
+                sample = img_SR[i].repeat(nphases, 1, 1, 1)
+                enlarged_tensors.append(sample)
+            img_SR = torch.cat(enlarged_tensors, dim=0).to(device)
 
+            outputs = DN_model(inputs, img_SR)
+
+            inputs = inputs.view(sample_batch, nphases * ndirs, input_height, input_width)
+            outputs = outputs.view(sample_batch, nphases * ndirs, input_height, input_width)
+        else:
+            exit()
 
         # 1 3 128 128 -> 3 128 128
         img_pred = outputs.detach().cpu().numpy()
         img_gt = gts.detach().cpu().numpy()
         inputs_cpu = inputs.detach().cpu().numpy()
         # print(img_gt.shape)
-        for i in range(3):
+        for i in range(sample_batch):
             mses, nrmses, psnrs, ssims = cal_comp(np.squeeze(img_gt[i]), np.squeeze(img_pred[i]), 
                                                   mses, nrmses, psnrs, ssims)
             input_show.append(inputs_cpu[i][0, :, :])
             gt_show.append(img_gt[i][0, :, :])
             pred_show.append(img_pred[i][0, :, :])
 
-    r, c = 3, 3
+    r, c = sample_batch, 3
     fig, axs = plt.subplots(r, c)
     cnt = 0
     for row in range(r):
-        # print(len(img_name),len(psnrs),len(ssims))
-        axs[row, 1].set_title(
-            'IMG=%s;PSNR=%.4f; SSIM=%4f' % (img_name[row],psnrs[row], ssims[row]))
-        for col, image in enumerate([input_show, pred_show, gt_show]):
-            axs[row, col].imshow(np.squeeze(image[row]))
-            axs[row, col].axis('off')
+        if r > 1: 
+            axs[row, 1].set_title(
+                'IMG=%s;PSNR=%.4f; SSIM=%4f' % (img_name[row], psnrs[row], ssims[row])
+                )
+            for col, image in enumerate([input_show, pred_show, gt_show]):
+                axs[row, col].imshow(np.squeeze(image[row]))
+                axs[row, col].axis('off')
+        else:
+            axs[1].set_title(
+                'IMG=%s;PSNR=%.4f; SSIM=%4f' % (img_name[row], psnrs[row], ssims[row])
+                )
+            for col, image in enumerate([input_show, pred_show, gt_show]):
+                axs[col].imshow(np.squeeze(image[row]))
+                axs[col].axis('off')
         cnt += 1
         
     fig.savefig(os.path.join(DN_sample_path, '%d.png' % epoch))
