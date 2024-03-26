@@ -1,6 +1,6 @@
 CUDA_VISIBLE_DEVICES='4,5,6,7' CUDA_DEVICE_ORDER=PCI_BUS_ID \
 python  -m torch.distributed.launch --nproc_per_node 4 --master_port 29271 \
-                                    train_rDL_Denoising_Module_NOPattern.py \
+                                    train_rDL_Denoising_Module_NoPattern.py \
                                     --root_path /mnt/data2_16T/datasets/zhi.deng/Biology_cell/rDL_SIM_data/rDL_pku/rDL_SIM_separate/DN/ \
                                     --data_folder Microtubules \
                                     --dataset Microtubules \
