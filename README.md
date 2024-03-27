@@ -46,4 +46,8 @@
 
 - 2024.03.20:处理PKU数据到模型所需格式，共49 * 55 * 11 张图片，但是PKU数据集数据质量不佳；修改代码val和sample中的SSIM计算函数，保持与测试中一致，使用Skimage库；开始使用PKU数据进行训练；
 
-- 2024.03.21:根据实验结果表明，**光照信息OTF对于PKU数据集的影响几乎没有**；创建Pattern_image分支，尝试将Pattern-moduled images的生成分离，提高训练效率；创建rDL_NoPattern模型，取消SIM模拟过程，将SR_Inference输出的图片通过一个卷积层进行维度改变后，直接送入MPE中，进行实验结果比较**未完成**；
+- 2024.03.21:根据实验结果表明，**光照信息OTF对于PKU数据集的影响几乎没有**；创建Pattern_image分支，尝试将Pattern-moduled images的生成分离，提高训练效率；创建rDL_NoPattern模型，取消SIM模拟过程，将SR_Inference输出的图片通过一个卷积层进行维度改变后，直接送入MPE中，进行实验结果比较；
+
+- 2024.03.26:修改rDL_Denoise_NoPattern模型及训练代码，提供encoder分支MPE_input_channel数目设置选择（3/9），3对应与原模型训练方法，9需要增加mid_channel数目提高模型容量；
+
+- 2024.03.27:新建rDL_NoPatternv2_test用于测试NoPatternv2模型，NoPattern模型已被替代，若要测试需要从github上参考下载模型；

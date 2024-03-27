@@ -187,20 +187,21 @@ def train(epoch):
         inputs = batch_info['input'].to(device) 
         gts = batch_info['gt'].to(device)
 
+        tmp_bt = inputs.shape[0]
+
         img_SR = SR_model(inputs) # bt 1 256 256
 
         if MPE_input_channel == 9:
             outputs = DN_model(inputs, img_SR)
             
         elif MPE_input_channel == 3:
-            assert batch_size==1 # 暂时固定bt为1
             # bt 9 128 128 -> bt*3 3 128 128
-            inputs = inputs.view(batch_size* nphases, ndirs, input_height, input_width).to(device)
-            gts = gts.view(batch_size* nphases, ndirs, input_height, input_width).to(device)
+            inputs = inputs.view(tmp_bt* nphases, ndirs, input_height, input_width).to(device)
+            gts = gts.view(tmp_bt* nphases, ndirs, input_height, input_width).to(device)
             
             # bt 1 256 256 -> bt*3 1 256 256
             enlarged_tensors = []
-            for i in range(batch_size):
+            for i in range(tmp_bt):
                 sample = img_SR[i].repeat(nphases, 1, 1, 1)
                 enlarged_tensors.append(sample)
             img_SR = torch.cat(enlarged_tensors, dim=0).to(device)
@@ -223,6 +224,7 @@ def train(epoch):
                                  DN_optimizer.param_groups[-1]['lr'], elapsed_time)
                                  )
             start_time = datetime.datetime.now()
+
 
         # 测试代码
         # if(batch_idx > 10):
@@ -250,20 +252,21 @@ def val(epoch):
             inputs = batch_info['input'].to(device)
             gts = batch_info['gt'].to(device)
             
+            tmp_bt = inputs.shape[0]
+
             img_SR = SR_model(inputs) # bt 1 256 256
 
             if MPE_input_channel == 9:
                 outputs = DN_model(inputs, img_SR)
                 
             elif MPE_input_channel == 3:
-                assert batch_size==1 # 暂时固定bt为1
                 # bt 9 128 128 -> bt*3 3 128 128
-                inputs = inputs.view(batch_size* nphases, ndirs, input_height, input_width).to(device)
-                gts = gts.view(batch_size* nphases, ndirs, input_height, input_width).to(device)
+                inputs = inputs.view(tmp_bt* nphases, ndirs, input_height, input_width).to(device)
+                gts = gts.view(tmp_bt* nphases, ndirs, input_height, input_width).to(device)
                 
                 # bt 1 256 256 -> bt*3 1 256 256
                 enlarged_tensors = []
-                for i in range(batch_size):
+                for i in range(tmp_bt):
                     sample = img_SR[i].repeat(nphases, 1, 1, 1)
                     enlarged_tensors.append(sample)
                 img_SR = torch.cat(enlarged_tensors, dim=0).to(device)

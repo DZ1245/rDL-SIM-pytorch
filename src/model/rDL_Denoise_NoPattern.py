@@ -123,7 +123,7 @@ class Feature_Extracte(nn.Module):
 
 class SIM_Gen_Conv(nn.Module):
     def __init__(self, input_channel=1, output_channel=9):
-        super(Feature_Extracte, self).__init__()
+        super(SIM_Gen_Conv, self).__init__()
         # 通过卷积处理来得到所需的数据维度
         self.SIMconv = nn.Conv2d(in_channels=input_channel, out_channels=output_channel, kernel_size=3, stride=1, padding=1)
         self.SIMpool = nn.MaxPool2d(kernel_size=2, stride=2)
