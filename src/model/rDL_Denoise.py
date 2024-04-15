@@ -5,7 +5,7 @@ import torch.nn as nn
 
 from .cbam import CBAM
 
-# 通道注意力层(CALayer)
+# 通道注意力层(CALayer)hahs
 class CALayer(nn.Module):
     def __init__(self, channels=64, input_height=128, input_width=128, reduction=16):
         super(CALayer, self).__init__()
