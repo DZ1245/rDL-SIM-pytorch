@@ -70,30 +70,23 @@ class ResidualGroup(nn.Module):
 
 # PFE，MPE特征融合后提取
 class FCD(nn.Module):
-    def __init__(self,input_channels=9, output_channels=64, 
-                 input_height=128, input_width=128, n_rg=5, 
-                 scale=2, attention_mode='SEnet'):
+    def __init__(self,input_channels=9, output_channels=64, input_height=128, input_width=128, n_rg=5, scale=2, attention_mode='SEnet'):
         super(FCD, self).__init__()
 
-        self.conv1 = nn.Conv2d(output_channels, output_channels, 
-                               kernel_size=3, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(output_channels, output_channels, kernel_size=3, stride=1, padding=1)
         self.leaky_relu = nn.LeakyReLU(negative_slope=0.2)
 
-        ResGroup_list = [ResidualGroup(5, output_channels, input_height, input_width, attention_mode) 
-                         for i in range(n_rg)]
+        ResGroup_list = [ResidualGroup(5, output_channels, input_height, input_width, attention_mode) for i in range(n_rg)]
         self.ResGroup = nn.Sequential(*ResGroup_list)
 
         
-        self.conv2 = nn.Conv2d(output_channels, output_channels * (scale ** 2), 
-                               kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(output_channels, output_channels * (scale ** 2), kernel_size=3, stride=1, padding=1)
         if attention_mode == 'SEnet':
             self.attn = CALayer(output_channels * (scale ** 2), input_height, input_width)
         elif attention_mode == 'CBAM':
-            self.attn = CBAM(gate_channels=output_channels * (scale ** 2),reduction_ratio=16, 
-                             pool_types=['avg', 'max'], no_spatial=False)
+            self.attn = CBAM(gate_channels=output_channels * (scale ** 2),reduction_ratio=16, pool_types=['avg', 'max'], no_spatial=False)
 
-        self.conv3 = nn.Conv2d(output_channels * (scale ** 2), input_channels, 
-                               kernel_size=3, stride=1, padding=1)
+        self.conv3 = nn.Conv2d(output_channels * (scale ** 2), input_channels, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
         c1 = self.conv1(x)
@@ -108,16 +101,13 @@ class FCD(nn.Module):
 
 # 特征提取
 class Feature_Extracte(nn.Module):
-    def __init__(self, input_channel=9, output_channel=64, 
-                 input_height=128, input_width=128, n_rg=5, 
-                 attention_mode='SEnet'):
+    def __init__(self, input_channel=9, output_channel=64, input_height=128, input_width=128, n_rg=5, attention_mode='SEnet'):
         super(Feature_Extracte, self).__init__()
 
         self.conv1 = nn.Conv2d(input_channel, output_channel, kernel_size=3, stride=1, padding=1)
         self.leaky_relu = nn.LeakyReLU(negative_slope=0.2)
 
-        ResGroup_list = [ResidualGroup(5, output_channel, input_height, input_width, attention_mode) 
-                         for i in range(n_rg)]
+        ResGroup_list = [ResidualGroup(5, output_channel, input_height, input_width, attention_mode) for i in range(n_rg)]
         self.ResGroup = nn.Sequential(*ResGroup_list)
 
         self.conv2 = nn.Conv2d(output_channel, output_channel, kernel_size=3, stride=1, padding=1)
@@ -131,15 +121,30 @@ class Feature_Extracte(nn.Module):
         out = lrelu2
         return out
 
+class SIM_Gen_Conv(nn.Module):
+    def __init__(self, input_channel=1, output_channel=9):
+        super(SIM_Gen_Conv, self).__init__()
+        # 通过卷积处理来得到所需的数据维度
+        self.SIMconv = nn.Conv2d(in_channels=input_channel, out_channels=output_channel, kernel_size=3, stride=1, padding=1)
+        self.SIMpool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.relu = nn.ReLU()
+    
+    def forward(self, x):
+        c1 = self.SIMconv(x)
+        p1 = self.SIMpool(c1)
+        r1 = self.relu(p1)
+        return r1
+
 class rDL_Denoise(nn.Module):
-    def __init__(self, input_channels=3, output_channels=64, input_height=128, 
-                 input_width=128, n_rgs=[5, 2, 5], attention_mode='SEnet', 
-                 encoder_type='MPE+PFE'):
+    def __init__(self, input_channels=9, output_channels=64, SR_input_channels=1,
+                 input_height=128, input_width=128, n_rgs=[5, 2, 5], 
+                 attention_mode='SEnet', encoder_type='MPE+PFE'):
         super(rDL_Denoise, self).__init__()
-        assert encoder_type in ['MPE', 'PFE', 'MPE+PFE']
-        
+
         self.encoder_type = encoder_type
         if self.encoder_type == 'MPE':
+            self.SIM_Gen = SIM_Gen_Conv(input_channel=SR_input_channels,output_channel=input_channels)
+
             self.MPE = Feature_Extracte(input_channels, output_channels, 
                                         input_height, input_width, n_rgs[1], 
                                         attention_mode)
@@ -148,6 +153,8 @@ class rDL_Denoise(nn.Module):
                                         input_height, input_width, n_rgs[0], 
                                         attention_mode)
         elif self.encoder_type == 'MPE+PFE':
+            self.SIM_Gen = SIM_Gen_Conv(input_channel=SR_input_channels,output_channel=input_channels)
+
             self.PFE = Feature_Extracte(input_channels, output_channels, 
                                         input_height, input_width, n_rgs[0], 
                                         attention_mode)
@@ -159,9 +166,12 @@ class rDL_Denoise(nn.Module):
 
         self.FCD = FCD(input_channels, output_channels, input_height, 
                        input_width, n_rgs[2],attention_mode=attention_mode)
-
+        
     def forward(self, inputs_PFE, inputs_MPE):
+        
         if self.encoder_type == 'MPE':
+            # 简单模仿数据处理
+            inputs_MPE = self.SIM_Gen(inputs_MPE)
             mpe = self.MPE(inputs_MPE)
             fcd = self.FCD(mpe)
 
@@ -170,6 +180,7 @@ class rDL_Denoise(nn.Module):
             fcd = self.FCD(pfe)
             
         elif self.encoder_type == 'MPE+PFE':
+            inputs_MPE = self.SIM_Gen(inputs_MPE)
             mpe = self.MPE(inputs_MPE)
             pfe = self.PFE(inputs_PFE)
             fcd = self.FCD(pfe + mpe)
